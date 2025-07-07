@@ -229,7 +229,6 @@
             type="checkbox"
             class="toggle toggle-sm"
             bind:checked={currentFilter}
-            on:change={toggleFilter}
           />
         </label>
       </div>
