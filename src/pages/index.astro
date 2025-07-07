@@ -1,6 +1,7 @@
 ---
 import Layout from "./Layout.astro";
-const { BASE_API_URL } = import.meta.env;
+const BASE_API_URL = process.env.BASE_API_URL;
+console.log(BASE_API_URL);
 ---
 
 <Layout>
