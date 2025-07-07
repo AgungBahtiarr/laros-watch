@@ -1,38 +1,138 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+/* Import Inter font */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
+/* Custom font family */
+.font-inter {
+  font-family:
+    "Inter",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif;
+}
+
+/* Simple dark theme */
 @plugin "daisyui/theme" {
-  name: "light";
-  default: false;
-  prefersdark: false;
-  color-scheme: "light";
-  --color-base-100: oklch(98% 0.003 247.858);
-  --color-base-200: oklch(96% 0.007 247.896);
-  --color-base-300: oklch(92% 0.013 255.508);
-  --color-base-content: oklch(20% 0.042 265.755);
-  --color-primary: oklch(87% 0.169 91.605);
-  --color-primary-content: oklch(27% 0.077 45.635);
-  --color-secondary: oklch(86% 0.005 56.366);
-  --color-secondary-content: oklch(14% 0.004 49.25);
-  --color-accent: oklch(81% 0.111 293.571);
-  --color-accent-content: oklch(28% 0.141 291.089);
-  --color-neutral: oklch(12% 0.042 264.695);
-  --color-neutral-content: oklch(98% 0.003 247.858);
-  --color-info: oklch(60% 0.126 221.723);
-  --color-info-content: oklch(98% 0.019 200.873);
-  --color-success: oklch(64% 0.2 131.684);
-  --color-success-content: oklch(98% 0.031 120.757);
-  --color-warning: oklch(66% 0.179 58.318);
-  --color-warning-content: oklch(98% 0.022 95.277);
-  --color-error: oklch(58% 0.253 17.585);
-  --color-error-content: oklch(96% 0.015 12.422);
-  --radius-selector: 1rem;
-  --radius-field: 0rem;
-  --radius-box: 1rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --border: 1px;
-  --depth: 1;
-  --noise: 0;
+  name: "dark";
+  default: true;
+  color-scheme: "dark";
+  --color-base-100: #1f2937;
+  --color-base-200: #374151;
+  --color-base-300: #4b5563;
+  --color-base-content: #f9fafb;
+  --color-primary: #3b82f6;
+  --color-primary-content: #ffffff;
+  --color-secondary: #8b5cf6;
+  --color-secondary-content: #ffffff;
+  --color-accent: #f59e0b;
+  --color-accent-content: #ffffff;
+  --color-neutral: #6b7280;
+  --color-neutral-content: #f9fafb;
+  --color-info: #06b6d4;
+  --color-info-content: #ffffff;
+  --color-success: #10b981;
+  --color-success-content: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-content: #ffffff;
+  --color-error: #ef4444;
+  --color-error-content: #ffffff;
+}
+
+/* Global styles */
+* {
+  transition: all 0.2s ease;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+}
+
+/* Card hover effects */
+.card:hover {
+  transform: translateY(-2px);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Loading animations */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Gradient background */
+.bg-gradient-to-br {
+  background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
+}
+
+/* Badge animations */
+.badge-success .animate-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Collapse improvements */
+.collapse-title {
+  font-weight: 500;
+}
+
+/* Alert styles */
+.alert {
+  border-radius: 0.75rem;
+}
+
+/* Button focus styles */
+.btn:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Toggle styles */
+.toggle:checked {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .card {
+    margin: 0.5rem 0;
+  }
+
+  .stats {
+    padding: 1rem;
+  }
 }
