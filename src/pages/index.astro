@@ -218,7 +218,8 @@ console.log(BASE_API_URL);
   </div>
 </Layout>
 
-<script define:vars={{ BASE_API_URL }}>
+<script is:inline data-url={BASE_API_URL}>
+  const BASE_API_URL = document.currentScript.dataset.url;
   document.addEventListener("DOMContentLoaded", () => {
     const sseContainer = document.getElementById("devices-list-container");
     const filterOffline = document.getElementById("filter-offline");
