@@ -1,0 +1,64 @@
+---
+import Layout from "./Layout.astro";
+const { BASE_API_URL } = import.meta.env;
+---
+
+<Layout>
+  <div class="container mx-auto p-4 md:p-8">
+    <header class="mb-8 text-center">
+      <h1 class="text-5xl font-bold">Laros Watch</h1>
+      <p class="text-base-content/70 mt-2">Live Network Monitoring</p>
+    </header>
+
+    <main
+      id="devices-list-container"
+      class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start"
+      hx-ext="sse"
+      sse-connect=`${BASE_API_URL}/nodes/status/events`
+      sse-swap="update-list"
+      hx-swap="innerHTML"
+    >
+      <div class="text-center p-8 md:col-span-full">
+        <span class="loading loading-lg loading-spinner"></span>
+        <p class="mt-4">Loading all devices...</p>
+      </div>
+    </main>
+
+    <footer class="mt-12 text-center text-sm text-base-content/50">
+      <p>LarosNdoo...</p>
+    </footer>
+  </div>
+</Layout>
+
+<script>
+  // 1. Cari elemen yang memiliki koneksi SSE
+  const sseContainer = document.getElementById("devices-list-container");
+
+  if (sseContainer) {
+    sseContainer.addEventListener("htmx:sseError", function (event) {
+      console.error("SSE Connection Error:", event.detail.error);
+
+      const errorMessage = document.createElement("div");
+      errorMessage.className =
+        "p-4 my-4 text-sm text-red-800 rounded-lg bg-red-50 text-center md:col-span-full";
+      errorMessage.setAttribute("role", "alert");
+      errorMessage.innerHTML =
+        '<span class="font-medium">Koneksi terputus!</span> Mencoba menyambungkan kembali...';
+
+      const oldError = sseContainer.querySelector(".sse-error-message");
+      if (oldError) {
+        oldError.remove();
+      }
+      errorMessage.classList.add("sse-error-message");
+
+      sseContainer.prepend(errorMessage);
+    });
+
+    sseContainer.addEventListener("htmx:sseMessage", function (event) {
+      const errorMessage = sseContainer.querySelector(".sse-error-message");
+      if (errorMessage) {
+        errorMessage.remove();
+      }
+    });
+  }
+</script>

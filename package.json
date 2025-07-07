@@ -1,0 +1,31 @@
+{
+  "name": "laros-watch",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "bunx --bun astro dev --host 0.0.0.0",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "bun --bun run ./dist/server/entry.mjs",
+    "astro": "astro",
+    "migrate": "bunx drizzle-kit migrate",
+    "push": "bunx drizzle-kit push",
+    "studio": "bunx drizzle-kit studio"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.3.0",
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/bun": "^1.2.18",
+    "astro": "^5.10.2",
+    "daisyui": "^5.0.43",
+    "dotenv": "^17.0.1",
+    "htmx-ext-sse": "^2.2.3",
+    "htmx.org": "^2.0.6",
+    "tailwindcss": "^4.1.11"
+  },
+  "devDependencies": {
+    "@flydotio/dockerfile": "^0.7.10",
+    "@types/node": "^24.0.10",
+    "drizzle-kit": "^0.31.4"
+  }
+}

@@ -1,0 +1,19 @@
+---
+import "@/styles/global.css";
+---
+
+<!doctype html>
+<html lang="en" data-theme="dracula">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Laros Watch</title>
+  </head>
+  <body class="bg-base-300">
+    <slot />
+  </body>
+  <script>
+    import "htmx.org";
+    import "htmx-ext-sse";
+  </script>
+</html>
