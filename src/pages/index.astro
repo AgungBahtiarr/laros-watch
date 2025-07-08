@@ -1,16 +1,16 @@
 ---
 import Layout from "./Layout.astro";
 import DeviceList from "../components/DeviceList.svelte";
-const BASE_API_URL = process.env.BASE_API_URL;
+const BASE_API_URL = import.meta.env.PUBLIC_BASE_API_URL;
 ---
 
 <Layout>
-    <div
-        class="min-h-screen bg-gradient-to-br from-base-300 via-base-200 to-base-100"
-    >
-        <DeviceList client:load baseUrl={BASE_API_URL} />
-        <div class="text-center mt-8 text-base-content/50">
-            <p class="text-sm">LarosNdoo Network Monitoring System</p>
-        </div>
+  <div
+    class="min-h-screen bg-gradient-to-br from-base-300 via-base-200 to-base-100"
+  >
+    <DeviceList client:load baseUrl={BASE_API_URL} />
+    <div class="text-center mt-8 text-base-content/50">
+      <p class="text-sm">LarosNdoo Network Monitoring System</p>
     </div>
+  </div>
 </Layout>
