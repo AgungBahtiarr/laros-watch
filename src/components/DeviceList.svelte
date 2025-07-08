@@ -35,7 +35,7 @@
         };
 
         const fetchNodes = async () => {
-            console.log("Fetching nodes from /api/nodes...");
+            console.log("Fetching nodes from /nodes...");
             try {
                 const response = await fetch(`${baseUrl}/nodes`);
                 if (!response.ok) {
