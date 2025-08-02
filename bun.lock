@@ -5,8 +5,10 @@
       "name": "laros-watch-sv",
       "dependencies": {
         "@types/leaflet": "^1.9.19",
+        "@types/leaflet-draw": "^1.0.12",
         "@types/leaflet-routing-machine": "^3.2.8",
         "leaflet": "^1.9.4",
+        "leaflet-draw": "^1.0.4",
         "leaflet-routing-machine": "^3.2.12",
       },
       "devDependencies": {
@@ -199,6 +201,8 @@
 
     "@types/leaflet": ["@types/leaflet@1.9.19", "", { "dependencies": { "@types/geojson": "*" } }, "sha512-pB+n2daHcZPF2FDaWa+6B0a0mSDf4dPU35y5iTXsx7x/PzzshiX5atYiS1jlBn43X7XvM8AP+AB26lnSk0J4GA=="],
 
+    "@types/leaflet-draw": ["@types/leaflet-draw@1.0.12", "", { "dependencies": { "@types/leaflet": "*" } }, "sha512-ayjGxelc3pp7532852Qn/LYHs/CHOcUqM9iDVsXuIXbIGfM2h3OtsHO/sQzFO6GAz2IvslPupgJaYocsY8NH+g=="],
+
     "@types/leaflet-routing-machine": ["@types/leaflet-routing-machine@3.2.8", "", { "dependencies": { "@types/leaflet": "*" } }, "sha512-v2pJDv/nqbB769SsytHemhLkqwjVor9UdWvZ1l6Y2SEaXNt1yDwVrktc4sCT8/4n7npuEb8VP+UAk8xrPePqSQ=="],
 
     "@types/resolve": ["@types/resolve@1.20.2", "", {}, "sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q=="],
@@ -262,6 +266,8 @@
     "kleur": ["kleur@4.1.5", "", {}, "sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ=="],
 
     "leaflet": ["leaflet@1.9.4", "", {}, "sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA=="],
+
+    "leaflet-draw": ["leaflet-draw@1.0.4", "", {}, "sha512-rsQ6saQO5ST5Aj6XRFylr5zvarWgzWnrg46zQ1MEOEIHsppdC/8hnN8qMoFvACsPvTioAuysya/TVtog15tyAQ=="],
 
     "leaflet-routing-machine": ["leaflet-routing-machine@3.2.12", "", { "dependencies": { "@mapbox/corslite": "0.0.7", "@mapbox/polyline": "^0.2.0", "osrm-text-instructions": "^0.13.2" } }, "sha512-HLde58G1YtD9xSIzZavJ6BPABZaV1hHeGst8ouhzuxmSC3s32NVtADT+njbIUMW1maHRCrsgTk/E4hz5QH7FrA=="],
 
