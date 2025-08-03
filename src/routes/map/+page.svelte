@@ -7,7 +7,11 @@
     import "leaflet-draw";
     import "leaflet-draw/dist/leaflet.draw.css";
 
-    // --- State ---
+    // --- Constants ---
+    const API_BASE_URL = "http://localhost:3000/api";
+    const OSRM_SERVICE_URL = "https://osrm.1dev.win/route/v1";
+
+    // --- Component State ---
     let mapContainer: HTMLElement;
     let mapInstance: L.Map | null = null;
     let allNodes = $state<any[]>([]);
@@ -16,14 +20,37 @@
     let editingCustomRoute = $state(false);
     let selectedConnectionForDrawing = $state<any>(null);
 
+    // --- Map Interaction State ---
+    let highlightedControl: L.Routing.Control | null = null;
+    let originalHighlightStyle: L.PathOptions | null = null;
+
     // --- Leaflet Layers & Controls ---
-    let markers: L.Marker[] = [];
-    let routingControls: any[] = [];
-    let customPolylines: L.Polyline[] = [];
+    let markerLayer = L.layerGroup();
+    let routingControls: L.Routing.Control[] = [];
     let drawControl: L.Control.Draw | null = null;
     let drawnItems: L.FeatureGroup | null = null;
 
-    const API_BASE_URL = "http://localhost:3000/api";
+    // --- Icons ---
+    const greenIcon = new L.Icon({
+        iconUrl:
+            "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+        shadowUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+    });
+    const redIcon = new L.Icon({
+        iconUrl:
+            "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+        shadowUrl:
+            "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+    });
 
     // --- Data Fetching ---
     const fetchAllData = async () => {
@@ -34,7 +61,6 @@
                 fetch(`${API_BASE_URL}/nodes`),
                 fetch(`${API_BASE_URL}/nodes/connections`),
             ]);
-
             if (!nodesRes.ok)
                 throw new Error(`Nodes fetch failed: HTTP ${nodesRes.status}`);
             if (!connsRes.ok)
@@ -52,10 +78,8 @@
                     .join("-");
                 if (!unique.has(key)) unique.set(key, c);
             });
-            const fetchedConnections = Array.from(unique.values());
-
+            connections = Array.from(unique.values());
             allNodes = fetchedNodes;
-            connections = fetchedConnections;
 
             console.log(
                 `STEP 2: Fetch complete. Found ${allNodes.length} nodes and ${connections.length} connections.`,
@@ -70,6 +94,131 @@
     };
 
     // --- Map Drawing ---
+    const clearHighlight = () => {
+        if (highlightedControl && originalHighlightStyle) {
+            console.log("Clearing highlight");
+            const line = (highlightedControl as any)._line;
+            if (line) {
+                try {
+                    // Check if line has eachLayer method (LayerGroup)
+                    if (
+                        line.eachLayer &&
+                        typeof line.eachLayer === "function"
+                    ) {
+                        line.eachLayer((layer: any) => {
+                            if (
+                                layer.setStyle &&
+                                typeof layer.setStyle === "function"
+                            ) {
+                                layer.setStyle(originalHighlightStyle);
+                            }
+                        });
+                    } else if (
+                        line.setStyle &&
+                        typeof line.setStyle === "function"
+                    ) {
+                        // Direct setStyle for single layer
+                        line.setStyle(originalHighlightStyle);
+                    }
+                } catch (err) {
+                    console.error("❌ Failed to clear highlight:", err);
+                }
+            }
+        }
+        highlightedControl = null;
+        originalHighlightStyle = null;
+    };
+
+    const setupRouteEvents = (
+        control: L.Routing.Control,
+        initialStyle: L.PathOptions,
+        distance: string,
+    ) => {
+        // A short delay to ensure the line layer is created and available
+        setTimeout(() => {
+            const line = (control as any)._line as L.LayerGroup;
+            if (!line) {
+                console.error(
+                    "❌ Could not find line layer on routing control after delay.",
+                );
+                return;
+            }
+            console.log("✅ Found line layer, attaching events.", line);
+
+            line.on("click", (e: L.LeafletMouseEvent) => {
+                console.log("🎉 Route path clicked!", e);
+                L.DomEvent.stop(e); // Prevent map click event
+
+                clearHighlight(); // Clear previous highlight
+
+                // Apply new highlight
+                highlightedControl = control;
+                originalHighlightStyle = initialStyle;
+                line.setStyle({ color: "yellow", weight: 8 });
+
+                // Show popup
+                L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent(`<b>Distance:</b> ${distance} km`)
+                    .openOn(mapInstance!);
+            });
+        }, 100); // Using a 100ms delay for more reliability
+    };
+
+    const createRoute = (conn: any, nodeA: any, nodeB: any) => {
+        const latA = parseFloat(nodeA.lat);
+        const lngA = parseFloat(nodeA.lng);
+        const latB = parseFloat(nodeB.lat);
+        const lngB = parseFloat(nodeB.lng);
+        if ([latA, lngA, latB, lngB].some(isNaN)) return null;
+
+        const isOnline = nodeA.status === 1 && nodeB.status === 1;
+        const color = isOnline
+            ? `#${Math.floor(Math.random() * 16777215)
+                  .toString(16)
+                  .padStart(6, "0")}`
+            : "red";
+
+        const waypoints = [L.latLng(latA, lngA)];
+        if (conn.customRoute?.coordinates?.length > 0) {
+            waypoints.push(
+                ...conn.customRoute.coordinates.map((c: [number, number]) =>
+                    L.latLng(c[0], c[1]),
+                ),
+            );
+        }
+        waypoints.push(L.latLng(latB, lngB));
+
+        const lineStyle: L.PathOptions = { color, opacity: 1, weight: 5 };
+
+        const control = L.Routing.control({
+            router: L.Routing.osrmv1({ serviceUrl: OSRM_SERVICE_URL }),
+            waypoints,
+            addWaypoints: false,
+            createMarker: () => null,
+            lineOptions: { styles: [lineStyle], addWaypoints: false },
+        });
+
+        control.on("routingerror", (e: any) => {
+            console.error("Routing error:", e.error);
+        });
+
+        // Store route data and connection info when routes are found
+        control.on("routesfound", (e: any) => {
+            console.log("🚀 Routes found for connection:", conn.description);
+            (control as any)._routes = e.routes;
+            (control as any)._connectionInfo = {
+                connection: conn,
+                nodeA: nodeA,
+                nodeB: nodeB,
+                color: color,
+            };
+            console.log("✅ Route data stored for:", conn.description);
+        });
+
+        return control;
+    };
+
     const drawMapContent = () => {
         if (!mapInstance) {
             console.warn("Draw function called before map was ready.");
@@ -79,46 +228,23 @@
             `STEP 3: Redrawing map with ${allNodes.length} nodes and ${connections.length} connections.`,
         );
 
-        // Clear existing layers
-        markers.forEach((m) => m.remove());
-        markers = [];
-        routingControls.forEach((c) => c.remove());
+        markerLayer.clearLayers();
+        routingControls.forEach((control) => control.remove());
         routingControls = [];
-        customPolylines.forEach((p) => p.remove());
-        customPolylines = [];
-
-        const greenIcon = new L.Icon({
-            iconUrl:
-                "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-            shadowUrl:
-                "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41],
-        });
-        const redIcon = new L.Icon({
-            iconUrl:
-                "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
-            shadowUrl:
-                "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41],
-        });
+        clearHighlight();
 
         allNodes.forEach((node) => {
             const lat = parseFloat(node.lat);
             const lng = parseFloat(node.lng);
             if (isNaN(lat) || isNaN(lng)) return;
             const icon = node.status === 1 ? greenIcon : redIcon;
-            const marker = L.marker([lat, lng], { icon })
-                .addTo(mapInstance!)
+            L.marker([lat, lng], { icon })
                 .bindPopup(
-                    `<b>${node.name}</b><br>IP: ${node.ipMgmt}<br>Status: ${node.status === 1 ? "Online" : "Offline"}`,
-                );
-            markers.push(marker);
+                    `<b>${node.name}</b><br>IP: ${node.ipMgmt}<br>Status: ${
+                        node.status === 1 ? "Online" : "Offline"
+                    }`,
+                )
+                .addTo(markerLayer);
         });
 
         connections.forEach((conn) => {
@@ -126,38 +252,10 @@
             const nodeB = allNodes.find((n) => n.deviceId === conn.deviceBId);
             if (!nodeA || !nodeB) return;
 
-            const latA = parseFloat(nodeA.lat);
-            const lngA = parseFloat(nodeA.lng);
-            const latB = parseFloat(nodeB.lat);
-            const lngB = parseFloat(nodeB.lng);
-            if ([latA, lngA, latB, lngB].some(isNaN)) return;
-
-            const isOnline = nodeA.status === 1 && nodeB.status === 1;
-            const color = isOnline
-                ? `#${Math.floor(Math.random() * 16777215)
-                      .toString(16)
-                      .padStart(6, "0")}`
-                : "red";
-
-            if (conn.customRoute?.coordinates?.length > 0) {
-                const polyline = L.polyline(conn.customRoute.coordinates, {
-                    color,
-                    weight: 5,
-                    opacity: 1,
-                });
-                polyline.addTo(mapInstance!);
-                customPolylines.push(polyline);
-            } else {
-                const control = L.Routing.control({
-                    router: L.Routing.osrmv1({
-                        serviceUrl: "https://osrm.1dev.win/route/v1",
-                    }),
-                    waypoints: [L.latLng(latA, lngA), L.latLng(latB, lngB)],
-                    addWaypoints: false,
-                    createMarker: () => null,
-                    lineOptions: { styles: [{ color, opacity: 1, weight: 5 }] },
-                }).addTo(mapInstance!);
-                routingControls.push(control);
+            const routeControl = createRoute(conn, nodeA, nodeB);
+            if (routeControl) {
+                routeControl.addTo(mapInstance);
+                routingControls.push(routeControl);
             }
         });
         console.log("STEP 4: Map content drawing finished.");
@@ -179,7 +277,7 @@
             );
             if (!res.ok) throw new Error(await res.text());
             alert("Custom route saved!");
-            await fetchAllData();
+            await fetchAllData(); // This will trigger a redraw via $effect
         } catch (e) {
             console.error("Failed to save custom route:", e);
             alert("Failed to save custom route.");
@@ -188,9 +286,28 @@
         }
     };
 
+    const deleteCustomRoute = async (connId: number) => {
+        if (!confirm("Are you sure you want to delete this custom route?"))
+            return;
+        try {
+            const res = await fetch(
+                `${API_BASE_URL}/nodes/connections/${connId}/custom-route`,
+                {
+                    method: "DELETE",
+                },
+            );
+            if (!res.ok) throw new Error(await res.text());
+            alert("Custom route deleted!");
+            await fetchAllData(); // This will trigger a redraw via $effect
+        } catch (e) {
+            console.error("Failed to delete custom route:", e);
+            alert(`Failed to delete custom route: ${(e as Error).message}`);
+        }
+    };
+
     const startDrawing = (connection: any) => {
         if (!mapInstance) return;
-        editingCustomRoute = false;
+        editingCustomRoute = false; // Close the modal
         selectedConnectionForDrawing = connection;
 
         drawnItems?.remove();
@@ -264,6 +381,175 @@
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             }).addTo(mapInstance);
 
+            markerLayer.addTo(mapInstance);
+
+            mapInstance.on("click", (e) => {
+                console.log("🗺️ Map clicked at:", e.latlng);
+                console.log("Click target:", e.originalEvent.target);
+
+                const target = e.originalEvent.target as HTMLElement;
+
+                // Check if click target is a route path
+                if (
+                    target &&
+                    target.tagName === "path" &&
+                    target.classList.contains("leaflet-interactive")
+                ) {
+                    console.log("🎯 Route path clicked detected!");
+
+                    // Find which route this path belongs to by color matching
+                    const targetColor = target.getAttribute("stroke");
+                    let clickedConnection = null;
+                    let clickedControl = null;
+
+                    for (let i = 0; i < routingControls.length; i++) {
+                        const control = routingControls[i];
+                        const connectionInfo = (control as any)._connectionInfo;
+
+                        if (
+                            connectionInfo &&
+                            connectionInfo.color === targetColor
+                        ) {
+                            clickedConnection = connectionInfo;
+                            clickedControl = control;
+                            console.log(
+                                "✅ Matched path to control by color:",
+                                clickedConnection.connection.description,
+                            );
+                            break;
+                        }
+                    }
+
+                    if (clickedConnection && clickedControl) {
+                        console.log(
+                            "🎉 Found clicked route:",
+                            clickedConnection.connection.description,
+                        );
+
+                        // Clear any existing highlight
+                        clearHighlight();
+
+                        // Set new highlight
+                        highlightedControl = clickedControl;
+                        originalHighlightStyle = {
+                            color: targetColor || "#000",
+                            opacity: 1,
+                            weight: 5,
+                        };
+
+                        console.log("🎨 Applying highlight...");
+                        // Apply highlight style
+                        const line = (clickedControl as any)._line;
+                        console.log("Line object for highlighting:", line);
+
+                        if (line) {
+                            try {
+                                // Check if line has eachLayer method (LayerGroup)
+                                if (
+                                    line.eachLayer &&
+                                    typeof line.eachLayer === "function"
+                                ) {
+                                    line.eachLayer((layer: any) => {
+                                        if (
+                                            layer.setStyle &&
+                                            typeof layer.setStyle === "function"
+                                        ) {
+                                            layer.setStyle({
+                                                color: "yellow",
+                                                weight: 8,
+                                                opacity: 0.8,
+                                                dashArray: "10, 5",
+                                            });
+                                        }
+                                    });
+                                } else if (
+                                    line.setStyle &&
+                                    typeof line.setStyle === "function"
+                                ) {
+                                    // Direct setStyle for single layer
+                                    line.setStyle({
+                                        color: "yellow",
+                                        weight: 8,
+                                        opacity: 0.8,
+                                        dashArray: "10, 5",
+                                    });
+                                }
+                                console.log("✅ Highlight style applied");
+                            } catch (err) {
+                                console.error(
+                                    "❌ Failed to apply highlight:",
+                                    err,
+                                );
+                            }
+                        } else {
+                            console.error(
+                                "❌ No line object found for highlighting",
+                            );
+                        }
+
+                        // Get route data for distance calculation
+                        const routes = (clickedControl as any)._routes;
+                        console.log("Route data:", routes);
+
+                        if (routes && routes.length > 0 && routes[0].summary) {
+                            const route = routes[0];
+                            const distanceKm = (
+                                route.summary.totalDistance / 1000
+                            ).toFixed(2);
+                            const durationMin = Math.round(
+                                route.summary.totalTime / 60,
+                            );
+
+                            console.log("📊 Route info:", {
+                                distanceKm,
+                                durationMin,
+                            });
+
+                            const popupContent = `
+            							<div class="text-sm">
+            								<div class="font-bold text-base mb-2">${clickedConnection.connection.description}</div>
+            								<div><b>Jarak:</b> ${distanceKm} km</div>
+            								<div><b>Estimasi Waktu:</b> ${durationMin} menit</div>
+            								<div class="text-xs mt-2 opacity-70">
+            									${clickedConnection.nodeA.name} ↔ ${clickedConnection.nodeB.name}
+            								</div>
+            							</div>
+            						`;
+
+                            try {
+                                L.popup({
+                                    maxWidth: 250,
+                                    className: "route-popup",
+                                })
+                                    .setLatLng(e.latlng)
+                                    .setContent(popupContent)
+                                    .openOn(mapInstance!);
+                                console.log("✅ Popup created and opened");
+                            } catch (err) {
+                                console.error(
+                                    "❌ Failed to create popup:",
+                                    err,
+                                );
+                            }
+                        } else {
+                            console.warn("⚠️ No route data found for popup");
+                        }
+
+                        // Prevent further processing
+                        return;
+                    } else {
+                        console.warn(
+                            "⚠️ No matching control found for clicked path",
+                        );
+                    }
+                }
+
+                // Only clear highlight if we're not currently drawing and didn't click a route
+                if (!selectedConnectionForDrawing) {
+                    clearHighlight();
+                }
+            });
+
             await fetchAllData();
 
             eventSource = new EventSource(
@@ -297,8 +583,8 @@
 
     $effect(() => {
         // This effect now explicitly depends on allNodes and connections
-        const nodes = allNodes;
-        const conns = connections;
+        const _ = allNodes;
+        const __ = connections;
 
         if (mapInstance) {
             drawMapContent();
@@ -312,11 +598,11 @@
         {#if !selectedConnectionForDrawing}
             <button
                 class="btn btn-primary"
-                on:click={() => (editingCustomRoute = true)}
+                onclick={() => (editingCustomRoute = true)}
                 >Edit Custom Routes</button
             >
         {:else}
-            <button class="btn btn-error" on:click={stopDrawing}
+            <button class="btn btn-error" onclick={stopDrawing}
                 >Cancel Drawing</button
             >
         {/if}
@@ -382,13 +668,22 @@
                                 <td>
                                     <button
                                         class="btn btn-sm btn-info"
-                                        on:click={() => startDrawing(conn)}
+                                        onclick={() => startDrawing(conn)}
                                     >
                                         {conn.customRoute?.coordinates?.length >
                                         0
                                             ? "Edit"
                                             : "Create"}
                                     </button>
+                                    {#if conn.customRoute?.coordinates?.length > 0}
+                                        <button
+                                            class="btn btn-sm btn-error ml-2"
+                                            onclick={() =>
+                                                deleteCustomRoute(conn.id)}
+                                        >
+                                            Delete
+                                        </button>
+                                    {/if}
                                 </td>
                             </tr>
                         {/each}
@@ -396,9 +691,8 @@
                 </table>
             </div>
             <div class="modal-action">
-                <button
-                    class="btn"
-                    on:click={() => (editingCustomRoute = false)}>Close</button
+                <button class="btn" onclick={() => (editingCustomRoute = false)}
+                    >Close</button
                 >
             </div>
         </div>
@@ -408,5 +702,47 @@
 <style>
     :global(.leaflet-routing-container) {
         display: none;
+    }
+
+    /* Ensure the pane containing vector layers can receive mouse events */
+    :global(.leaflet-overlay-pane) {
+        z-index: 450 !important;
+        pointer-events: none;
+    }
+
+    /* Ensure the SVG element and the path itself are clickable */
+    :global(.leaflet-overlay-pane svg),
+    :global(.leaflet-overlay-pane path),
+    :global(path.leaflet-interactive) {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+    }
+
+    /* Make sure routing lines are interactive */
+    :global(.leaflet-routing-container path),
+    :global(.leaflet-overlay-pane g),
+    :global(.leaflet-overlay-pane g path) {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+    }
+
+    /* Custom popup styling */
+    :global(.route-popup .leaflet-popup-content-wrapper) {
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    :global(.route-popup .leaflet-popup-content) {
+        margin: 12px 16px;
+        line-height: 1.4;
+    }
+
+    /* Ensure route lines are properly styled for interaction */
+    :global(.leaflet-routing-container-hide) {
+        display: none;
+    }
+
+    :global(.leaflet-interactive) {
+        cursor: pointer !important;
     }
 </style>
