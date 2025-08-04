@@ -6,6 +6,7 @@
     import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
     import "leaflet-draw";
     import "leaflet-draw/dist/leaflet.draw.css";
+    import Select from "svelte-select";
 
     // --- Constants ---
     const API_BASE_URL = "http://localhost:3000/api";
@@ -19,6 +20,145 @@
     let connectionError = $state<any>(null);
     let editingCustomRoute = $state(false);
     let selectedConnectionForDrawing = $state<any>(null);
+
+    // --- Manual Connection Creation (with device/port dropdowns) ---
+    let addingConnection = $state(false);
+    let addConnLoading = $state(false);
+    let addConnError = $state<string | null>(null);
+    let newConn = $state<{
+        deviceAId: number | null;
+        portAId: number | null;
+        deviceBId: number | null;
+        portBId: number | null;
+    }>({
+        deviceAId: null,
+        portAId: null,
+        deviceBId: null,
+        portBId: null,
+    });
+
+    // Helpers for device/port selection
+    const nodeByDeviceId = (deviceId: number | null) =>
+        allNodes.find((n: any) => n.deviceId === deviceId);
+
+    const availableInterfaces = (deviceId: number | null) => {
+        const node = nodeByDeviceId(deviceId ?? null);
+        return node?.interfaces ?? [];
+    };
+
+    // Search queries
+    let qDeviceA = $state("");
+    let qDeviceB = $state("");
+    let qPortA = $state("");
+    let qPortB = $state("");
+
+    // Filtering helpers
+    const filterDevices = (q: string) => {
+        const s = (q || "").toLowerCase();
+        if (!s) return allNodes;
+        return allNodes.filter((n: any) => {
+            return (
+                (n.name && n.name.toLowerCase().includes(s)) ||
+                (n.deviceId + "").includes(s) ||
+                (n.ipMgmt && n.ipMgmt.toLowerCase().includes(s)) ||
+                (n.popLocation && n.popLocation.toLowerCase().includes(s))
+            );
+        });
+    };
+
+    const filterInterfaces = (deviceId: number | null, q: string) => {
+        const s = (q || "").toLowerCase();
+        const list = availableInterfaces(deviceId);
+        if (!s) return list;
+        return list.filter((itf: any) => {
+            return (
+                (itf.ifName && itf.ifName.toLowerCase().includes(s)) ||
+                (itf.ifDescr && itf.ifDescr.toLowerCase().includes(s)) ||
+                (itf.id + "").includes(s) ||
+                (itf.ifIndex + "").includes(s)
+            );
+        });
+    };
+
+    const openAddConnection = () => {
+        addConnError = null;
+        newConn = {
+            deviceAId: null,
+            portAId: null,
+            deviceBId: null,
+            portBId: null,
+        };
+        addingConnection = true;
+    };
+
+    const closeAddConnection = () => {
+        addingConnection = false;
+    };
+
+    const onSelectDeviceA = (value: string) => {
+        const idNum = value ? Number(value) : null;
+        newConn.deviceAId = idNum;
+        // reset portA when deviceA changes
+        newConn.portAId = null;
+    };
+
+    const onSelectDeviceB = (value: string) => {
+        const idNum = value ? Number(value) : null;
+        newConn.deviceBId = idNum;
+        // reset portB when deviceB changes
+        newConn.portBId = null;
+    };
+
+    const onSelectPortA = (value: string) => {
+        newConn.portAId = value ? Number(value) : null;
+    };
+
+    const onSelectPortB = (value: string) => {
+        newConn.portBId = value ? Number(value) : null;
+    };
+
+    const submitNewConnection = async () => {
+        addConnError = null;
+
+        // Basic validation
+        if (
+            !newConn.deviceAId ||
+            !newConn.portAId ||
+            !newConn.deviceBId ||
+            !newConn.portBId
+        ) {
+            addConnError =
+                "Please select Device A, Port A, Device B, and Port B.";
+            return;
+        }
+
+        const payload: any = {
+            deviceAId: Number(newConn.deviceAId),
+            portAId: Number(newConn.portAId),
+            deviceBId: Number(newConn.deviceBId),
+            portBId: Number(newConn.portBId),
+        };
+
+        addConnLoading = true;
+        try {
+            const res = await fetch(`${API_BASE_URL}/nodes/connections`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || `HTTP ${res.status}`);
+            }
+            // Refresh data and close modal
+            await fetchAllData();
+            addingConnection = false;
+        } catch (err) {
+            addConnError = (err as Error).message;
+        } finally {
+            addConnLoading = false;
+        }
+    };
 
     // --- Map Interaction State ---
     let highlightedControl: L.Routing.Control | null = null;
@@ -596,11 +736,16 @@
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-2xl font-bold text-base-content">Network Map</h2>
         {#if !selectedConnectionForDrawing}
-            <button
-                class="btn btn-primary"
-                onclick={() => (editingCustomRoute = true)}
-                >Edit Custom Routes</button
-            >
+            <div class="flex gap-2">
+                <button
+                    class="btn btn-primary"
+                    onclick={() => (editingCustomRoute = true)}
+                    >Edit Custom Routes</button
+                >
+                <button class="btn btn-secondary" onclick={openAddConnection}
+                    >Add Connection</button
+                >
+            </div>
         {:else}
             <button class="btn btn-error" onclick={stopDrawing}
                 >Cancel Drawing</button
@@ -693,6 +838,160 @@
             <div class="modal-action">
                 <button class="btn" onclick={() => (editingCustomRoute = false)}
                     >Close</button
+                >
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Add Connection Modal -->
+{#if addingConnection}
+    <div class="modal modal-open" role="dialog">
+        <div class="modal-box w-11/12 max-w-4xl">
+            <h3 class="font-bold text-lg mb-2">Add Connection Manually</h3>
+
+            {#if addConnError}
+                <div class="alert alert-error my-3">
+                    <span>{addConnError}</span>
+                </div>
+            {/if}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                <!-- Device A -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Device A*</span>
+                    </label>
+
+                    <Select
+                        items={filterDevices(qDeviceA).map((n: any) => ({
+                            label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                            value: n.deviceId,
+                            raw: n,
+                        }))}
+                        value={filterDevices(qDeviceA)
+                            .map((n: any) => ({
+                                label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                                value: n.deviceId,
+                                raw: n,
+                            }))
+                            .find((o: any) => o.value === newConn.deviceAId)}
+                        on:select={(e) => onSelectDeviceA(e.detail?.value)}
+                        clearable={true}
+                        searchable={true}
+                        placeholder="Select device..."
+                        noOptionsMessage="No devices found"
+                    />
+                </div>
+
+                <!-- Port A -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Port A*</span>
+                    </label>
+
+                    <Select
+                        items={filterInterfaces(newConn.deviceAId, qPortA).map(
+                            (itf: any) => ({
+                                label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                value: itf.id,
+                                raw: itf,
+                            }),
+                        )}
+                        value={filterInterfaces(newConn.deviceAId, qPortA)
+                            .map((itf: any) => ({
+                                label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                value: itf.id,
+                                raw: itf,
+                            }))
+                            .find((o: any) => o.value === newConn.portAId)}
+                        on:select={(e) => onSelectPortA(e.detail?.value)}
+                        clearable={true}
+                        searchable={true}
+                        placeholder={newConn.deviceAId
+                            ? "Select port..."
+                            : "Select device first"}
+                        noOptionsMessage={newConn.deviceAId
+                            ? "No ports found"
+                            : "Select device first"}
+                        disabled={!newConn.deviceAId}
+                    />
+                </div>
+
+                <!-- Device B -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Device B*</span>
+                    </label>
+
+                    <Select
+                        items={filterDevices(qDeviceB).map((n: any) => ({
+                            label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                            value: n.deviceId,
+                            raw: n,
+                        }))}
+                        value={filterDevices(qDeviceB)
+                            .map((n: any) => ({
+                                label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                                value: n.deviceId,
+                                raw: n,
+                            }))
+                            .find((o: any) => o.value === newConn.deviceBId)}
+                        on:select={(e) => onSelectDeviceB(e.detail?.value)}
+                        clearable={true}
+                        searchable={true}
+                        placeholder="Select device..."
+                        noOptionsMessage="No devices found"
+                    />
+                </div>
+
+                <!-- Port B -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Port B*</span>
+                    </label>
+
+                    <Select
+                        items={filterInterfaces(newConn.deviceBId, qPortB).map(
+                            (itf: any) => ({
+                                label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                value: itf.id,
+                                raw: itf,
+                            }),
+                        )}
+                        value={filterInterfaces(newConn.deviceBId, qPortB)
+                            .map((itf: any) => ({
+                                label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                value: itf.id,
+                                raw: itf,
+                            }))
+                            .find((o: any) => o.value === newConn.portBId)}
+                        on:select={(e) => onSelectPortB(e.detail?.value)}
+                        clearable={true}
+                        searchable={true}
+                        placeholder={newConn.deviceBId
+                            ? "Select port..."
+                            : "Select device first"}
+                        noOptionsMessage={newConn.deviceBId
+                            ? "No ports found"
+                            : "Select device first"}
+                        disabled={!newConn.deviceBId}
+                    />
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button
+                    class="btn"
+                    onclick={closeAddConnection}
+                    disabled={addConnLoading}>Cancel</button
+                >
+                <button
+                    class="btn btn-primary"
+                    onclick={submitNewConnection}
+                    class:loading={addConnLoading}
+                    disabled={addConnLoading}
+                    >{addConnLoading ? "Saving..." : "Save"}</button
                 >
             </div>
         </div>
