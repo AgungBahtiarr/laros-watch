@@ -852,6 +852,11 @@
                     >Edit Custom Routes</button
                 >
                 <button
+                    class="btn btn-secondary"
+                    onclick={() => (addingConnection = true)}
+                    >Add Connection</button
+                >
+                <button
                     class="btn btn-accent"
                     onclick={() => (managingConnections = true)}
                     >Manage Connections</button
@@ -913,241 +918,6 @@
                     <span>{manageConnError}</span>
                 </div>
             {/if}
-
-            <!-- Create New Connection Section -->
-            <div
-                class="collapse collapse-arrow bg-base-200 mb-6 rounded-xl shadow-md"
-            >
-                <input type="checkbox" checked />
-                <div class="collapse-title text-lg font-semibold">
-                    <span class="text-primary">📡</span> Create New Connection
-                </div>
-                <div class="collapse-content">
-                    {#if addConnError}
-                        <div class="alert alert-error mb-4 shadow-sm">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="stroke-current flex-shrink-0 h-6 w-6"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                            <span>{addConnError}</span>
-                        </div>
-                    {/if}
-
-                    <div
-                        class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4"
-                    >
-                        <!-- Device A -->
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text font-medium"
-                                    >Device A <span class="text-error">*</span
-                                    ></span
-                                >
-                            </label>
-                            <Select
-                                items={filterDevices(qDeviceA).map(
-                                    (n: any) => ({
-                                        label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                                        value: n.deviceId,
-                                        raw: n,
-                                    }),
-                                )}
-                                value={filterDevices(qDeviceA)
-                                    .map((n: any) => ({
-                                        label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                                        value: n.deviceId,
-                                        raw: n,
-                                    }))
-                                    .find(
-                                        (o: any) =>
-                                            o.value === newConn.deviceAId,
-                                    )}
-                                on:select={(e) =>
-                                    onSelectDeviceA(e.detail?.value)}
-                                clearable={true}
-                                searchable={true}
-                                placeholder="Select device..."
-                                noOptionsMessage="No devices found"
-                                --listMaxHeight="300px"
-                            />
-                        </div>
-
-                        <!-- Port A -->
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text font-medium"
-                                    >Port A <span class="text-error">*</span
-                                    ></span
-                                >
-                            </label>
-                            <Select
-                                items={filterInterfaces(
-                                    newConn.deviceAId,
-                                    qPortA,
-                                ).map((itf: any) => ({
-                                    label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                                    value: itf.id,
-                                    raw: itf,
-                                }))}
-                                value={filterInterfaces(
-                                    newConn.deviceAId,
-                                    qPortA,
-                                )
-                                    .map((itf: any) => ({
-                                        label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                                        value: itf.id,
-                                        raw: itf,
-                                    }))
-                                    .find(
-                                        (o: any) => o.value === newConn.portAId,
-                                    )}
-                                on:select={(e) =>
-                                    onSelectPortA(e.detail?.value)}
-                                clearable={true}
-                                searchable={true}
-                                placeholder={newConn.deviceAId
-                                    ? "Select port..."
-                                    : "Select device first"}
-                                noOptionsMessage={newConn.deviceAId
-                                    ? "No ports found"
-                                    : "Select device first"}
-                                disabled={!newConn.deviceAId}
-                                --listMaxHeight="300px"
-                            />
-                        </div>
-
-                        <!-- Device B -->
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text font-medium"
-                                    >Device B <span class="text-error">*</span
-                                    ></span
-                                >
-                            </label>
-                            <Select
-                                items={filterDevices(qDeviceB).map(
-                                    (n: any) => ({
-                                        label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                                        value: n.deviceId,
-                                        raw: n,
-                                    }),
-                                )}
-                                value={filterDevices(qDeviceB)
-                                    .map((n: any) => ({
-                                        label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                                        value: n.deviceId,
-                                        raw: n,
-                                    }))
-                                    .find(
-                                        (o: any) =>
-                                            o.value === newConn.deviceBId,
-                                    )}
-                                on:select={(e) =>
-                                    onSelectDeviceB(e.detail?.value)}
-                                clearable={true}
-                                searchable={true}
-                                placeholder="Select device..."
-                                noOptionsMessage="No devices found"
-                                --listMaxHeight="300px"
-                            />
-                        </div>
-
-                        <!-- Port B -->
-                        <div class="form-control">
-                            <label class="label">
-                                <span class="label-text font-medium"
-                                    >Port B <span class="text-error">*</span
-                                    ></span
-                                >
-                            </label>
-                            <Select
-                                items={filterInterfaces(
-                                    newConn.deviceBId,
-                                    qPortB,
-                                ).map((itf: any) => ({
-                                    label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                                    value: itf.id,
-                                    raw: itf,
-                                }))}
-                                value={filterInterfaces(
-                                    newConn.deviceBId,
-                                    qPortB,
-                                )
-                                    .map((itf: any) => ({
-                                        label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                                        value: itf.id,
-                                        raw: itf,
-                                    }))
-                                    .find(
-                                        (o: any) => o.value === newConn.portBId,
-                                    )}
-                                on:select={(e) =>
-                                    onSelectPortB(e.detail?.value)}
-                                clearable={true}
-                                searchable={true}
-                                placeholder={newConn.deviceBId
-                                    ? "Select port..."
-                                    : "Select device first"}
-                                noOptionsMessage={newConn.deviceBId
-                                    ? "No ports found"
-                                    : "Select device first"}
-                                disabled={!newConn.deviceBId}
-                                --listMaxHeight="300px"
-                            />
-                        </div>
-
-                        <!-- Description -->
-                        <div class="form-control xl:col-span-4">
-                            <label class="label">
-                                <span class="label-text font-medium"
-                                    >Description (optional)</span
-                                >
-                            </label>
-                            <input
-                                class="input input-bordered w-full"
-                                bind:value={newConn.description}
-                                placeholder="Enter connection description..."
-                            />
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end mt-6">
-                        <button
-                            class="btn btn-primary btn-wide"
-                            onclick={submitNewConnection}
-                            class:loading={addConnLoading}
-                            disabled={addConnLoading}
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="h-5 w-5 mr-2"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                            </svg>
-                            {addConnLoading
-                                ? "Creating..."
-                                : "Create Connection"}
-                        </button>
-                    </div>
-                </div>
-            </div>
 
             <!-- Connections List -->
             <div class="flex-1 overflow-hidden flex flex-col">
@@ -1727,6 +1497,200 @@
                 <button class="btn" onclick={() => (editingCustomRoute = false)}
                     >Close</button
                 >
+            </div>
+        </div>
+    </div>
+{/if}
+
+<!-- Add Connection Modal -->
+{#if addingConnection}
+    <div class="modal modal-open" role="dialog">
+        <div class="modal-box w-11/12 max-w-4xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Add Connection</h3>
+                <button
+                    class="btn btn-sm btn-circle btn-ghost"
+                    onclick={closeAddConnection}>✕</button
+                >
+            </div>
+
+            {#if addConnError}
+                <div class="alert alert-error mb-4 shadow-sm">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="stroke-current flex-shrink-0 h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                    </svg>
+                    <span>{addConnError}</span>
+                </div>
+            {/if}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Device A -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium"
+                            >Device A <span class="text-error">*</span></span
+                        >
+                    </label>
+                    <Select
+                        items={filterDevices(qDeviceA).map((n: any) => ({
+                            label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                            value: n.deviceId,
+                            raw: n,
+                        }))}
+                        value={filterDevices(qDeviceA)
+                            .map((n: any) => ({
+                                label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                                value: n.deviceId,
+                                raw: n,
+                            }))
+                            .find((o: any) => o.value === newConn.deviceAId)}
+                        on:select={(e) => onSelectDeviceA(e.detail?.value)}
+                        clearable={true}
+                        searchable={true}
+                        placeholder="Select device..."
+                        noOptionsMessage="No devices found"
+                        --listMaxHeight="300px"
+                    />
+                </div>
+
+                <!-- Port A -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium"
+                            >Port A <span class="text-error">*</span></span
+                        >
+                    </label>
+                    <Select
+                        items={filterInterfaces(newConn.deviceAId, qPortA).map(
+                            (itf: any) => ({
+                                label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                value: itf.id,
+                                raw: itf,
+                            }),
+                        )}
+                        value={filterInterfaces(newConn.deviceAId, qPortA)
+                            .map((itf: any) => ({
+                                label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                value: itf.id,
+                                raw: itf,
+                            }))
+                            .find((o: any) => o.value === newConn.portAId)}
+                        on:select={(e) => onSelectPortA(e.detail?.value)}
+                        clearable={true}
+                        searchable={true}
+                        placeholder={newConn.deviceAId
+                            ? "Select port..."
+                            : "Select device first"}
+                        noOptionsMessage={newConn.deviceAId
+                            ? "No ports found"
+                            : "Select device first"}
+                        disabled={!newConn.deviceAId}
+                        --listMaxHeight="300px"
+                    />
+                </div>
+
+                <!-- Device B -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium"
+                            >Device B <span class="text-error">*</span></span
+                        >
+                    </label>
+                    <Select
+                        items={filterDevices(qDeviceB).map((n: any) => ({
+                            label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                            value: n.deviceId,
+                            raw: n,
+                        }))}
+                        value={filterDevices(qDeviceB)
+                            .map((n: any) => ({
+                                label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                                value: n.deviceId,
+                                raw: n,
+                            }))
+                            .find((o: any) => o.value === newConn.deviceBId)}
+                        on:select={(e) => onSelectDeviceB(e.detail?.value)}
+                        clearable={true}
+                        searchable={true}
+                        placeholder="Select device..."
+                        noOptionsMessage="No devices found"
+                        --listMaxHeight="300px"
+                    />
+                </div>
+
+                <!-- Port B -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium"
+                            >Port B <span class="text-error">*</span></span
+                        >
+                    </label>
+                    <Select
+                        items={filterInterfaces(newConn.deviceBId, qPortB).map(
+                            (itf: any) => ({
+                                label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                value: itf.id,
+                                raw: itf,
+                            }),
+                        )}
+                        value={filterInterfaces(newConn.deviceBId, qPortB)
+                            .map((itf: any) => ({
+                                label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                value: itf.id,
+                                raw: itf,
+                            }))
+                            .find((o: any) => o.value === newConn.portBId)}
+                        on:select={(e) => onSelectPortB(e.detail?.value)}
+                        clearable={true}
+                        searchable={true}
+                        placeholder={newConn.deviceBId
+                            ? "Select port..."
+                            : "Select device first"}
+                        noOptionsMessage={newConn.deviceBId
+                            ? "No ports found"
+                            : "Select device first"}
+                        disabled={!newConn.deviceBId}
+                        --listMaxHeight="300px"
+                    />
+                </div>
+
+                <!-- Description -->
+                <div class="form-control md:col-span-2">
+                    <label class="label">
+                        <span class="label-text font-medium"
+                            >Description (optional)</span
+                        >
+                    </label>
+                    <input
+                        class="input input-bordered w-full"
+                        bind:value={newConn.description}
+                        placeholder="Enter connection description..."
+                    />
+                </div>
+            </div>
+
+            <div class="modal-action">
+                <button class="btn btn-ghost" onclick={closeAddConnection}
+                    >Cancel</button
+                >
+                <button
+                    class="btn btn-primary"
+                    onclick={submitNewConnection}
+                    class:loading={addConnLoading}
+                    disabled={addConnLoading}
+                >
+                    {addConnLoading ? "Creating..." : "Create Connection"}
+                </button>
             </div>
         </div>
     </div>
