@@ -276,6 +276,7 @@
     // --- Leaflet Layers & Controls ---
     let markerLayer = L.layerGroup();
     let routingControls: L.Routing.Control[] = [];
+    let routeControlCounter = 0;
     let drawControl: L.Control.Draw | null = null;
     let drawnItems: L.FeatureGroup | null = null;
 
@@ -415,6 +416,8 @@
     };
 
     const createRoute = (conn: any, nodeA: any, nodeB: any) => {
+        // Assign a unique control id for this connection to avoid cross-route collisions
+        const controlId = `route-${conn.id}-${Date.now()}-${routeControlCounter++}`;
         const latA = parseFloat(nodeA.lat);
         const lngA = parseFloat(nodeA.lng);
         const latB = parseFloat(nodeB.lat);
@@ -428,25 +431,75 @@
                   .padStart(6, "0")}`
             : "red";
 
-        const waypoints = [L.latLng(latA, lngA)];
+        const start = L.latLng(latA, lngA);
+        const end = L.latLng(latB, lngB);
+
+        const waypoints: L.LatLng[] = [start];
+
         if (conn.customRoute?.coordinates?.length > 0) {
-            waypoints.push(
-                ...conn.customRoute.coordinates.map((c: [number, number]) =>
-                    L.latLng(c[0], c[1]),
-                ),
+            // Map to LatLng
+            let coords: L.LatLng[] = conn.customRoute.coordinates.map(
+                (c: [number, number]) => L.latLng(c[0], c[1]),
             );
+
+            // If first custom point is closer to B than A, reverse to ensure A -> ... -> B
+            if (coords.length > 0) {
+                const distFirstToA = coords[0].distanceTo(start);
+                const distFirstToB = coords[0].distanceTo(end);
+                if (distFirstToB < distFirstToA) {
+                    coords = coords.reverse();
+                }
+            }
+
+            // Drop points too close to A or B (<= 5m) to avoid duplicate/looping hops
+            const minEdgeDist = 5; // meters
+            coords = coords.filter((p) => {
+                const closeToA = p.distanceTo(start) <= minEdgeDist;
+                const closeToB = p.distanceTo(end) <= minEdgeDist;
+                return !(closeToA || closeToB);
+            });
+
+            // Deduplicate consecutive points that are too close (<= 1m)
+            const deduped: L.LatLng[] = [];
+            const minStepDist = 1; // meters
+            for (const p of coords) {
+                if (
+                    deduped.length === 0 ||
+                    deduped[deduped.length - 1].distanceTo(p) > minStepDist
+                ) {
+                    deduped.push(p);
+                }
+            }
+
+            waypoints.push(...deduped);
         }
-        waypoints.push(L.latLng(latB, lngB));
+
+        waypoints.push(end);
 
         const lineStyle: L.PathOptions = { color, opacity: 1, weight: 5 };
+        // Create a unique pane per connection to prevent interactivity collisions
+        const paneName = `route-pane-${conn.id}`;
+        if (mapInstance && !(mapInstance as any)._panes[paneName]) {
+            mapInstance.createPane(paneName);
+            const pane = (mapInstance as any)._panes[paneName] as HTMLElement;
+            pane.style.zIndex = (450 + (conn.id % 50)).toString();
+            pane.style.pointerEvents = "auto";
+        }
 
         const control = L.Routing.control({
             router: L.Routing.osrmv1({ serviceUrl: OSRM_SERVICE_URL }),
             waypoints,
             addWaypoints: false,
             createMarker: () => null,
-            lineOptions: { styles: [lineStyle], addWaypoints: false },
+            lineOptions: {
+                styles: [lineStyle],
+                addWaypoints: false,
+                // put route in its own pane so it's isolated
+                pane: paneName,
+            } as any,
         });
+        // tag control with unique id for later matching
+        (control as any)._controlId = controlId;
 
         control.on("routingerror", (e: any) => {
             console.error("Routing error:", e.error);
@@ -461,7 +514,32 @@
                 nodeA: nodeA,
                 nodeB: nodeB,
                 color: color,
+                controlId: controlId,
             };
+            // Attach data attributes to the rendered SVG path(s) for robust hit-testing
+            const line = (control as any)._line;
+            try {
+                if (
+                    line &&
+                    (line as any).eachLayer &&
+                    typeof (line as any).eachLayer === "function"
+                ) {
+                    (line as any).eachLayer((layer: any) => {
+                        if (layer && layer._path) {
+                            layer._path.dataset.controlId = controlId;
+                            layer._path.dataset.connectionId = String(conn.id);
+                        }
+                    });
+                } else if (line && (line as any)._path) {
+                    (line as any)._path.dataset.controlId = controlId;
+                    (line as any)._path.dataset.connectionId = String(conn.id);
+                }
+            } catch (err) {
+                console.warn(
+                    "Failed to set data attributes on route path:",
+                    err,
+                );
+            }
             console.log("✅ Route data stored for:", conn.description);
         });
 
@@ -646,26 +724,45 @@
                 ) {
                     console.log("🎯 Route path clicked detected!");
 
-                    // Find which route this path belongs to by color matching
-                    const targetColor = target.getAttribute("stroke");
+                    // Prefer robust matching by data-control-id on the path
+                    const dataControlId =
+                        (target.dataset && target.dataset.controlId) || null;
                     let clickedConnection = null;
                     let clickedControl = null;
 
-                    for (let i = 0; i < routingControls.length; i++) {
-                        const control = routingControls[i];
-                        const connectionInfo = (control as any)._connectionInfo;
+                    if (dataControlId) {
+                        for (let i = 0; i < routingControls.length; i++) {
+                            const control = routingControls[i] as any;
+                            if (control._controlId === dataControlId) {
+                                clickedControl = routingControls[i];
+                                clickedConnection = control._connectionInfo;
+                                console.log(
+                                    "✅ Matched path to control by controlId:",
+                                    dataControlId,
+                                );
+                                break;
+                            }
+                        }
+                    } else {
+                        // Fallback: match by color only if no controlId present
+                        const targetColor = target.getAttribute("stroke");
+                        for (let i = 0; i < routingControls.length; i++) {
+                            const control = routingControls[i];
+                            const connectionInfo = (control as any)
+                                ._connectionInfo;
 
-                        if (
-                            connectionInfo &&
-                            connectionInfo.color === targetColor
-                        ) {
-                            clickedConnection = connectionInfo;
-                            clickedControl = control;
-                            console.log(
-                                "✅ Matched path to control by color:",
-                                clickedConnection.connection.description,
-                            );
-                            break;
+                            if (
+                                connectionInfo &&
+                                connectionInfo.color === targetColor
+                            ) {
+                                clickedConnection = connectionInfo;
+                                clickedControl = control;
+                                console.log(
+                                    "✅ Matched path to control by color (fallback):",
+                                    clickedConnection.connection.description,
+                                );
+                                break;
+                            }
                         }
                     }
 
@@ -681,7 +778,7 @@
                         // Set new highlight
                         highlightedControl = clickedControl;
                         originalHighlightStyle = {
-                            color: targetColor || "#000",
+                            color: clickedConnection.color || "#000",
                             opacity: 1,
                             weight: 5,
                         };
