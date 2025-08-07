@@ -855,7 +855,6 @@
             							<div class="text-sm">
             								<div class="font-bold text-base mb-2">${clickedConnection.connection.description}</div>
             								<div><b>Jarak:</b> ${distanceKm} km</div>
-            								<div><b>Estimasi Waktu:</b> ${durationMin} menit</div>
             								<div class="text-xs mt-2 opacity-70">
             									${clickedConnection.nodeA.name} ↔ ${clickedConnection.nodeB.name}
             								</div>
