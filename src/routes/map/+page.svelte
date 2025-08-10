@@ -564,11 +564,11 @@
             const lat = parseFloat(node.lat);
             const lng = parseFloat(node.lng);
             if (isNaN(lat) || isNaN(lng)) return;
-            const icon = node.status === 1 ? greenIcon : redIcon;
+            const icon = node.status === true ? greenIcon : redIcon;
             L.marker([lat, lng], { icon })
                 .bindPopup(
                     `<b>${node.name}</b><br>IP: ${node.ipMgmt}<br>Status: ${
-                        node.status === 1 ? "Online" : "Offline"
+                        node.status === true ? "Online" : "Offline"
                     }`,
                 )
                 .addTo(markerLayer);
