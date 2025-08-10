@@ -8,8 +8,8 @@
     $: statusColor = isOnline ? "success" : "error";
     $: statusText = isOnline ? "Online" : "Offline";
     $: interfacesUp =
-        node.interfaces?.filter((iface) => iface.ifOperStatus === true)
-            .length || 0;
+        node.interfaces?.filter((iface) => iface.ifOperStatus === 1).length ||
+        0;
     $: interfacesTotal = node.interfaces?.length || 0;
 </script>
 
