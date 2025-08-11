@@ -3,7 +3,9 @@ import L from "leaflet";
 import "leaflet-routing-machine";
 import type { Node, Connection } from "$lib/types";
 
-const OSRM_SERVICE_URL = "https://osrm.1dev.win/route/v1";
+import { PUBLIC_OSRM_SERVICE_URL } from "$env/static/public";
+
+const OSRM_SERVICE_URL = PUBLIC_OSRM_SERVICE_URL;
 
 export const greenIcon = new L.Icon({
     iconUrl:
