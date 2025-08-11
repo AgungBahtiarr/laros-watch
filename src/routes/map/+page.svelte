@@ -424,7 +424,7 @@
         const lngB = parseFloat(nodeB.lng);
         if ([latA, lngA, latB, lngB].some(isNaN)) return null;
 
-        const isOnline = nodeA.status === 1 && nodeB.status === 1;
+        const isOnline = nodeA.status === true && nodeB.status === true;
         const color = isOnline
             ? `#${Math.floor(Math.random() * 16777215)
                   .toString(16)
