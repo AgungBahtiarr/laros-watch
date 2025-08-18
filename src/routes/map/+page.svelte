@@ -225,8 +225,12 @@
                         const targetColor = target.getAttribute("stroke");
                         for (let i = 0; i < routingControls.length; i++) {
                             const control = routingControls[i];
-                            const connectionInfo = (control as any)._connectionInfo;
-                            if (connectionInfo && connectionInfo.color === targetColor) {
+                            const connectionInfo = (control as any)
+                                ._connectionInfo;
+                            if (
+                                connectionInfo &&
+                                connectionInfo.color === targetColor
+                            ) {
                                 clickedConnection = connectionInfo;
                                 clickedControl = control;
                                 break;
@@ -240,7 +244,9 @@
                         const routes = (clickedControl as any)._routes;
                         if (routes && routes.length > 0 && routes[0].summary) {
                             const route = routes[0];
-                            const distanceKm = (route.summary.totalDistance / 1000).toFixed(2);
+                            const distanceKm = (
+                                route.summary.totalDistance / 1000
+                            ).toFixed(2);
 
                             const popupContent = `
             							<div class="text-sm">
@@ -276,7 +282,9 @@
                 const data = JSON.parse(event.data);
                 if (!data.nodeChanges) return;
                 const change = data.nodeChanges[0];
-                const nodeIndex = allNodes.findIndex((n) => n.ipMgmt === change.ipMgmt);
+                const nodeIndex = allNodes.findIndex(
+                    (n) => n.ipMgmt === change.ipMgmt,
+                );
                 if (nodeIndex !== -1) {
                     const newNodes = [...allNodes];
                     newNodes[nodeIndex] = {
@@ -327,7 +335,9 @@
                 >
             </div>
         {:else}
-            <button class="btn btn-error" onclick={stopDrawing}>Cancel Drawing</button>
+            <button class="btn btn-error" onclick={stopDrawing}
+                >Cancel Drawing</button
+            >
         {/if}
     </div>
 
