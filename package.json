@@ -31,16 +31,16 @@
 		"svelte": "^5.0.0"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-node": "^5.2.13",
-		"@sveltejs/kit": "^2.27.1",
-		"@sveltejs/package": "^2.4.0",
+		"@sveltejs/adapter-node": "^5.3.1",
+		"@sveltejs/kit": "^2.31.1",
+		"@sveltejs/package": "^2.4.1",
 		"@sveltejs/vite-plugin-svelte": "^5.1.1",
-		"@tailwindcss/vite": "^4.1.11",
+		"@tailwindcss/vite": "^4.1.12",
 		"daisyui": "^5.0.50",
 		"publint": "^0.3.12",
-		"svelte": "^5.38.0",
+		"svelte": "^5.38.1",
 		"svelte-check": "^4.3.1",
-		"tailwindcss": "^4.1.11",
+		"tailwindcss": "^4.1.12",
 		"typescript": "^5.9.2",
 		"vite": "^6.3.5"
 	},
