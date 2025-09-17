@@ -6,16 +6,19 @@
     import "leaflet-draw";
     import "leaflet-draw/dist/leaflet.draw.css";
 
-    import type { Node, Connection } from "$lib/types";
+    import type { Node, Connection, OdpPoint } from "$lib/types";
     import {
         fetchAllNodes,
         fetchAllConnections,
         saveCustomRoute,
         getEventSource,
+        fetchAllOdpPoints,
+        saveOdpPoint,
     } from "$lib/api";
     import {
         greenIcon,
         redIcon,
+        blueIcon,
         createRoute,
         clearHighlight,
         highlightRoute,
@@ -23,19 +26,25 @@
     import AddConnectionModal from "$lib/components/map/AddConnectionModal.svelte";
     import ManageConnectionsModal from "$lib/components/map/ManageConnectionsModal.svelte";
     import EditCustomRoutesModal from "$lib/components/map/EditCustomRoutesModal.svelte";
+    import AddOdpPointModal from "$lib/components/map/AddOdpPointModal.svelte";
 
     // --- Component State ---
     let mapContainer: HTMLElement;
     let mapInstance: L.Map | null = null;
     let allNodes = $state<Node[]>([]);
     let connections = $state<Connection[]>([]);
+    let odpPoints = $state<OdpPoint[]>([]);
     let connectionError = $state<any>(null);
 
     // --- UI State ---
     let showAddConnectionModal = $state(false);
     let showManageConnectionsModal = $state(false);
     let showEditCustomRoutesModal = $state(false);
+    let showAddOdpModal = $state(false);
     let selectedConnectionForDrawing = $state<Connection | null>(null);
+    let newOdpCoordinates = $state<{ lat: number; lng: number } | null>(null);
+    let newOdpLocation = $state<string>("");
+    let isDrawingOdp = $state(false);
 
     // --- Leaflet Layers & Controls ---
     let markerLayer = L.layerGroup();
@@ -48,12 +57,14 @@
     const fetchAllData = async () => {
         connectionError = null;
         try {
-            const [nodes, conns] = await Promise.all([
+            const [nodes, conns, odps] = await Promise.all([
                 fetchAllNodes(),
                 fetchAllConnections(),
+                fetchAllOdpPoints(),
             ]);
             allNodes = nodes;
             connections = conns;
+            odpPoints = odps;
         } catch (e) {
             console.error("Data fetch error:", e);
             connectionError = {
@@ -71,6 +82,15 @@
         routingControls.forEach((control) => control.remove());
         routingControls = [];
         clearHighlight();
+
+        odpPoints.forEach((odp) => {
+            const lat = parseFloat(odp.lat);
+            const lng = parseFloat(odp.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+            L.marker([lat, lng], { icon: blueIcon })
+                .bindPopup(`<b>${odp.name}</b><br>(ODP)`)
+                .addTo(markerLayer);
+        });
 
         allNodes.forEach((node) => {
             const lat = parseFloat(node.lat);
@@ -105,6 +125,74 @@
         });
     };
 
+    // --- ODP Point Editing ---
+    const handleSaveOdp = async (detail: { name: string; location: string; notes: string }) => {
+        if (!newOdpCoordinates) return;
+        try {
+            await saveOdpPoint({ ...detail, ...newOdpCoordinates });
+            alert("ODP saved!");
+            await fetchAllData();
+        } catch (e) {
+            console.error("Failed to save ODP:", e);
+            alert("Failed to save ODP.");
+        } finally {
+            stopDrawing();
+            showAddOdpModal = false;
+            newOdpCoordinates = null;
+            newOdpLocation = "";
+        }
+    };
+
+    const startDrawingOdp = () => {
+        if (!mapInstance) return;
+        stopDrawing();
+        isDrawingOdp = true;
+
+        drawnItems = new L.FeatureGroup().addTo(mapInstance);
+
+        drawControl = new L.Control.Draw({
+            edit: false,
+            draw: {
+                polyline: false,
+                polygon: false,
+                rectangle: false,
+                circle: false,
+                marker: { icon: blueIcon },
+                circlemarker: false,
+            },
+        });
+        mapInstance.addControl(drawControl);
+
+        mapInstance.on(L.Draw.Event.CREATED, async (e: any) => {
+            const { lat, lng } = e.layer.getLatLng();
+            newOdpCoordinates = { lat, lng };
+
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    newOdpLocation = data.display_name || "";
+                } else {
+                    newOdpLocation = "";
+                }
+            } catch (error) {
+                console.error("Reverse geocoding error:", error);
+                newOdpLocation = "";
+            }
+
+            showAddOdpModal = true;
+        });
+    };
+
+    const cancelOdpDrawing = () => {
+        stopDrawing();
+        showAddOdpModal = false;
+        newOdpCoordinates = null;
+        newOdpLocation = "";
+    };
+
     // --- Custom Route Editing ---
     const handleSaveCustomRoute = async (
         connId: number,
@@ -124,10 +212,10 @@
 
     const startDrawing = (connection: Connection) => {
         if (!mapInstance) return;
+        stopDrawing();
         showEditCustomRoutesModal = false;
         selectedConnectionForDrawing = connection;
 
-        drawnItems?.remove();
         drawnItems = new L.FeatureGroup().addTo(mapInstance);
 
         if (connection.customRoute?.coordinates?.length > 0) {
@@ -137,7 +225,6 @@
             drawnItems.addLayer(polyline);
         }
 
-        drawControl?.remove();
         drawControl = new L.Control.Draw({
             edit: { featureGroup: drawnItems },
             draw: {
@@ -177,6 +264,7 @@
         drawControl = null;
         drawnItems = null;
         selectedConnectionForDrawing = null;
+        isDrawingOdp = false;
         mapInstance
             .off(L.Draw.Event.CREATED)
             .off(L.Draw.Event.EDITED)
@@ -270,7 +358,7 @@
                     }
                 }
 
-                if (!selectedConnectionForDrawing) {
+                if (!selectedConnectionForDrawing && !isDrawingOdp) {
                     clearHighlight();
                 }
             });
@@ -307,6 +395,7 @@
     $effect(() => {
         const _ = allNodes;
         const __ = connections;
+        const ___ = odpPoints;
         if (mapInstance) {
             drawMapContent();
         }
@@ -316,7 +405,7 @@
 <div class="bg-base-100 rounded-2xl shadow-xl border border-base-300 p-6 mb-8">
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-2xl font-bold text-base-content">Network Map</h2>
-        {#if !selectedConnectionForDrawing}
+        {#if !selectedConnectionForDrawing && !isDrawingOdp}
             <div class="flex gap-2">
                 <button
                     class="btn btn-primary"
@@ -328,16 +417,19 @@
                     onclick={() => (showAddConnectionModal = true)}
                     >Add Connection</button
                 >
+                <button class="btn btn-info" onclick={startDrawingOdp}>Add ODP</button>
                 <button
                     class="btn btn-accent"
                     onclick={() => (showManageConnectionsModal = true)}
                     >Manage Connections</button
                 >
             </div>
-        {:else}
+        {:else if selectedConnectionForDrawing}
             <button class="btn btn-error" onclick={stopDrawing}
                 >Cancel Drawing</button
             >
+        {:else if isDrawingOdp}
+            <button class="btn btn-error" onclick={cancelOdpDrawing}>Cancel</button>
         {/if}
     </div>
 
@@ -385,6 +477,14 @@
         on:close={() => (showEditCustomRoutesModal = false)}
         on:startdrawing={(e) => startDrawing(e.detail)}
         on:delete={fetchAllData}
+    />
+{/if}
+
+{#if showAddOdpModal}
+    <AddOdpPointModal
+        location={newOdpLocation}
+        on:close={cancelOdpDrawing}
+        on:save={(e) => handleSaveOdp(e.detail)}
     />
 {/if}
 

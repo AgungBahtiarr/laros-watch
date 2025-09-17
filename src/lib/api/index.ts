@@ -82,6 +82,33 @@ export const deleteCustomRoute = async (connId: number) => {
     if (!res.ok) throw new Error(await res.text());
 };
 
+export const fetchAllOdpPoints = async () => {
+    const res = await fetch(`${API_BASE_URL}/nodes/odp`);
+    if (!res.ok) throw new Error(`ODP points fetch failed: HTTP ${res.status}`);
+    return await res.json();
+};
+
+export type SaveOdpPointPayload = {
+    name: string;
+    location: string;
+    notes: string;
+    lat: number;
+    lng: number;
+};
+
+export const saveOdpPoint = async (payload: SaveOdpPointPayload) => {
+    const res = await fetch(`${API_BASE_URL}/nodes/odp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, lat: String(payload.lat), lng: String(payload.lng) }),
+    });
+    if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || `HTTP ${res.status}`);
+    }
+    return await res.json();
+};
+
 export const getEventSource = () => {
     return new EventSource(`${API_BASE_URL}/nodes/status/events`);
 };

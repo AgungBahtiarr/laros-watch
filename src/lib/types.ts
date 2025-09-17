@@ -33,3 +33,14 @@ export interface Connection {
     description?: string;
     customRoute?: CustomRoute;
 }
+
+export interface OdpPoint {
+    id: number;
+    name: string;
+    location: string;
+    lat: string;
+    lng: string;
+    notes: string;
+    createdAt: string;
+    updatedAt: string;
+}

@@ -3,7 +3,7 @@
     import StatsCard from "$lib/components/StatsCard.svelte";
     import DeviceCard from "$lib/components/DeviceCard.svelte";
 
-    const baseUrl = "http://localhost:3000/api";
+    import { PUBLIC_API_BASE_URL } from "$env/static/public";
     let allNodes = $state([]);
     let currentFilter = $state(false);
     let lastUpdated = $state("Never");
@@ -12,7 +12,7 @@
 
     const fetchNodes = async () => {
         try {
-            const response = await fetch(`${baseUrl}/nodes`);
+            const response = await fetch(`${PUBLIC_API_BASE_URL}/nodes`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -29,8 +29,8 @@
     };
 
     $effect(() => {
-        const eventSourceUrl = `${baseUrl}/nodes/status/events`;
-        if (!baseUrl) {
+        const eventSourceUrl = `${PUBLIC_API_BASE_URL}/nodes/status/events`;
+        if (!PUBLIC_API_BASE_URL) {
             connectionError = {
                 title: "Configuration Error",
                 subtitle: "BASE_API_URL environment variable is missing.",
