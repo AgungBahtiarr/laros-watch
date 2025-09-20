@@ -48,9 +48,9 @@
 
     // --- Leaflet Layers & Controls ---
     let markerLayer = L.layerGroup();
-    let routingControls: L.Routing.Control[] = [];
+    let routingControls: any[] = [];
     let routeControlCounter = 0;
-    let drawControl: L.Control.Draw | null = null;
+    let drawControl: any = null;
     let drawnItems: L.FeatureGroup | null = null;
 
     // --- Data Fetching ---
@@ -150,7 +150,7 @@
 
         drawnItems = new L.FeatureGroup().addTo(mapInstance);
 
-        drawControl = new L.Control.Draw({
+        drawControl = new (L.Control as any).Draw({
             edit: false,
             draw: {
                 polyline: false,
@@ -163,7 +163,7 @@
         });
         mapInstance.addControl(drawControl);
 
-        mapInstance.on(L.Draw.Event.CREATED, async (e: any) => {
+        mapInstance.on((L as any).Draw.Event.CREATED, async (e: any) => {
             const { lat, lng } = e.layer.getLatLng();
             newOdpCoordinates = { lat, lng };
 
@@ -218,14 +218,14 @@
 
         drawnItems = new L.FeatureGroup().addTo(mapInstance);
 
-        if (connection.customRoute?.coordinates?.length > 0) {
+        if (connection.customRoute?.coordinates && connection.customRoute.coordinates.length > 0) {
             const polyline = L.polyline(connection.customRoute.coordinates, {
                 color: "orange",
             });
             drawnItems.addLayer(polyline);
         }
 
-        drawControl = new L.Control.Draw({
+        drawControl = new (L.Control as any).Draw({
             edit: { featureGroup: drawnItems },
             draw: {
                 polyline: { shapeOptions: { color: "orange" } },
@@ -244,7 +244,7 @@
                 e.layer.getLatLngs().map((ll: any) => [ll.lat, ll.lng]),
             ),
         );
-        mapInstance.on(L.Draw.Event.EDITED, (e: any) =>
+        mapInstance.on((L as any).Draw.Event.EDITED, (e: any) =>
             e.layers.eachLayer((layer: any) =>
                 handleSaveCustomRoute(
                     selectedConnectionForDrawing!.id,
@@ -252,7 +252,7 @@
                 ),
             ),
         );
-        mapInstance.on(L.Draw.Event.DELETED, () =>
+        mapInstance.on((L as any).Draw.Event.DELETED, () =>
             handleSaveCustomRoute(selectedConnectionForDrawing!.id, []),
         );
     };
@@ -266,9 +266,9 @@
         selectedConnectionForDrawing = null;
         isDrawingOdp = false;
         mapInstance
-            .off(L.Draw.Event.CREATED)
-            .off(L.Draw.Event.EDITED)
-            .off(L.Draw.Event.DELETED);
+            .off((L as any).Draw.Event.CREATED)
+            .off((L as any).Draw.Event.EDITED)
+            .off((L as any).Draw.Event.DELETED);
     };
 
     // --- Lifecycle & Effects ---
@@ -448,27 +448,29 @@
     ></div>
 </div>
 
-<!-- Modals -->
-{#if showAddConnectionModal}
-    <AddConnectionModal
-        {allNodes}
-        on:close={() => (showAddConnectionModal = false)}
-        on:save={() => {
-            showAddConnectionModal = false;
-            fetchAllData();
-        }}
-    />
-{/if}
+    <!-- Modals -->
+    {#if showAddConnectionModal}
+        <AddConnectionModal
+            {allNodes}
+            {odpPoints}
+            on:close={() => (showAddConnectionModal = false)}
+            on:save={() => {
+                showAddConnectionModal = false;
+                fetchAllData();
+            }}
+        />
+    {/if}
 
-{#if showManageConnectionsModal}
-    <ManageConnectionsModal
-        {connections}
-        {allNodes}
-        on:close={() => (showManageConnectionsModal = false)}
-        on:update={fetchAllData}
-        on:delete={fetchAllData}
-    />
-{/if}
+    {#if showManageConnectionsModal}
+        <ManageConnectionsModal
+            {connections}
+            {allNodes}
+            {odpPoints}
+            on:close={() => (showManageConnectionsModal = false)}
+            on:update={fetchAllData}
+            on:delete={fetchAllData}
+        />
+    {/if}
 
 {#if showEditCustomRoutesModal}
     <EditCustomRoutesModal

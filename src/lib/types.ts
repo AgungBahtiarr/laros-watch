@@ -32,6 +32,7 @@ export interface Connection {
     portBId: number;
     description?: string;
     customRoute?: CustomRoute;
+    odpPath?: OdpPoint[];
 }
 
 export interface OdpPoint {

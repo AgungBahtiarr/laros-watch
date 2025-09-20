@@ -39,10 +39,10 @@
                 <tbody>
                     {#each connections as conn}
                         {@const nodeA = allNodes.find(
-                            (n) => n.deviceId === conn.deviceAId,
+                            (n: Node) => n.deviceId === conn.deviceAId,
                         )}
                         {@const nodeB = allNodes.find(
-                            (n) => n.deviceId === conn.deviceBId,
+                            (n: Node) => n.deviceId === conn.deviceBId,
                         )}
                         <tr>
                             <td>

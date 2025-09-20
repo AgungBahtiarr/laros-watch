@@ -40,7 +40,7 @@ export const blueIcon = new L.Icon({
     shadowSize: [41, 41],
 });
 
-let highlightedControl: L.Routing.Control | null = null;
+let highlightedControl: any = null;
 let originalHighlightStyle: L.PathOptions | null = null;
 
 export const clearHighlight = () => {
@@ -92,7 +92,22 @@ export const createRoute = (
 
     const waypoints: L.LatLng[] = [start];
 
-    if (conn.customRoute?.coordinates?.length > 0) {
+    // Add ODP waypoints if they exist
+    if (conn.odpPath && conn.odpPath.length > 0) {
+        const odpWaypoints: L.LatLng[] = conn.odpPath.map((odp) => {
+            const lat = parseFloat(odp.lat);
+            const lng = parseFloat(odp.lng);
+            if (isNaN(lat) || isNaN(lng)) {
+                console.warn(`Invalid ODP coordinates for ${odp.name}: lat=${odp.lat}, lng=${odp.lng}`);
+                return null;
+            }
+            return L.latLng(lat, lng);
+        }).filter((point): point is L.LatLng => point !== null);
+
+        waypoints.push(...odpWaypoints);
+    }
+    // Add custom route waypoints if they exist (fallback if no ODP path)
+    else if (conn.customRoute?.coordinates && conn.customRoute.coordinates.length > 0) {
         let coords: L.LatLng[] = conn.customRoute.coordinates.map((c: [number, number]) =>
             L.latLng(c[0], c[1]),
         );
@@ -137,8 +152,8 @@ export const createRoute = (
         pane.style.pointerEvents = "auto";
     }
 
-    const control = L.Routing.control({
-        router: L.Routing.osrmv1({ serviceUrl: OSRM_SERVICE_URL }),
+    const control = (L as any).Routing.control({
+        router: (L as any).Routing.osrmv1({ serviceUrl: OSRM_SERVICE_URL }),
         waypoints,
         addWaypoints: false,
         createMarker: () => null,
@@ -185,7 +200,7 @@ export const createRoute = (
     return control;
 };
 
-export function highlightRoute(control: L.Routing.Control, color: string) {
+export function highlightRoute(control: any, color: string) {
     clearHighlight();
 
     highlightedControl = control;

@@ -22,7 +22,7 @@ export const fetchAllConnections = async () => {
             .join("-");
         if (!unique.has(key)) unique.set(key, c);
     });
-    return Array.from(unique.values());
+    return Array.from(unique.values()) as Connection[];
 };
 
 export const updateConnection = async (conn: Partial<Connection>) => {
@@ -35,6 +35,7 @@ export const updateConnection = async (conn: Partial<Connection>) => {
             deviceBId: Number(conn.deviceBId),
             portBId: Number(conn.portBId),
             description: conn.description ?? "",
+            odpPath: conn.odpPath?.map((odp: any) => odp.id) ?? [],
         }),
     });
     if (!res.ok) {

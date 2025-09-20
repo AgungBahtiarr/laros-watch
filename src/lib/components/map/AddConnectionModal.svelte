@@ -2,10 +2,10 @@
 <script lang="ts">
     import Select from "svelte-select";
     import { createEventDispatcher } from "svelte";
-    import type { Node } from "$lib/types";
+    import type { Node, OdpPoint } from "$lib/types";
     import { createConnection } from "$lib/api";
 
-    let { allNodes } = $props<{ allNodes: Node[] }>();
+    let { allNodes, odpPoints } = $props<{ allNodes: Node[]; odpPoints: OdpPoint[] }>();
 
     const dispatch = createEventDispatcher();
 
@@ -17,12 +17,14 @@
         deviceBId: number | null;
         portBId: number | null;
         description: string;
+        odpPath: number[];
     }>({
         deviceAId: null,
         portAId: null,
         deviceBId: null,
         portBId: null,
         description: "",
+        odpPath: [],
     });
 
     // Helpers for device/port selection
@@ -112,6 +114,7 @@
             deviceBId: Number(newConn.deviceBId),
             portBId: Number(newConn.portBId),
             description: newConn.description,
+            odpPath: newConn.odpPath,
         };
 
         addConnLoading = true;
@@ -163,26 +166,25 @@
                         >Device A <span class="text-error">*</span></span
                     >
                 </label>
-                <Select
-                    items={filterDevices(qDeviceA).map((n: any) => ({
-                        label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                        value: n.deviceId,
-                        raw: n,
-                    }))}
-                    value={filterDevices(qDeviceA)
-                        .map((n: any) => ({
-                            label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                            value: n.deviceId,
-                            raw: n,
-                        }))
-                        .find((o: any) => o.value === newConn.deviceAId)}
-                    on:select={(e) => onSelectDeviceA(e.detail?.value)}
-                    clearable={true}
-                    searchable={true}
-                    placeholder="Select device..."
-                    noOptionsMessage="No devices found"
-                    --listMaxHeight="300px"
-                />
+                 <Select
+                     items={filterDevices(qDeviceA).map((n: any) => ({
+                         label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                         value: n.deviceId,
+                         raw: n,
+                     }))}
+                     value={filterDevices(qDeviceA)
+                         .map((n: any) => ({
+                             label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                             value: n.deviceId,
+                             raw: n,
+                         }))
+                         .find((o: any) => o.value === newConn.deviceAId)}
+                     on:select={(e) => onSelectDeviceA(e.detail?.value)}
+                     clearable={true}
+                     searchable={true}
+                     placeholder="Select device..."
+                     --listMaxHeight="300px"
+                 />
             </div>
 
             <!-- Port A -->
@@ -192,33 +194,30 @@
                         >Port A <span class="text-error">*</span></span
                     >
                 </label>
-                <Select
-                    items={filterInterfaces(newConn.deviceAId, qPortA).map(
-                        (itf: any) => ({
-                            label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                            value: itf.id,
-                            raw: itf,
-                        }),
-                    )}
-                    value={filterInterfaces(newConn.deviceAId, qPortA)
-                        .map((itf: any) => ({
-                            label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                            value: itf.id,
-                            raw: itf,
-                        }))
-                        .find((o: any) => o.value === newConn.portAId)}
-                    on:select={(e) => onSelectPortA(e.detail?.value)}
-                    clearable={true}
-                    searchable={true}
-                    placeholder={newConn.deviceAId
-                        ? "Select port..."
-                        : "Select device first"}
-                    noOptionsMessage={newConn.deviceAId
-                        ? "No ports found"
-                        : "Select device first"}
-                    disabled={!newConn.deviceAId}
-                    --listMaxHeight="300px"
-                />
+                 <Select
+                     items={filterInterfaces(newConn.deviceAId, qPortA).map(
+                         (itf: any) => ({
+                             label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                             value: itf.id,
+                             raw: itf,
+                         }),
+                     )}
+                     value={filterInterfaces(newConn.deviceAId, qPortA)
+                         .map((itf: any) => ({
+                             label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                             value: itf.id,
+                             raw: itf,
+                         }))
+                         .find((o: any) => o.value === newConn.portAId)}
+                     on:select={(e) => onSelectPortA(e.detail?.value)}
+                     clearable={true}
+                     searchable={true}
+                     placeholder={newConn.deviceAId
+                         ? "Select port..."
+                         : "Select device first"}
+                     disabled={!newConn.deviceAId}
+                     --listMaxHeight="300px"
+                 />
             </div>
 
             <!-- Device B -->
@@ -228,26 +227,25 @@
                         >Device B <span class="text-error">*</span></span
                     >
                 </label>
-                <Select
-                    items={filterDevices(qDeviceB).map((n: any) => ({
-                        label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                        value: n.deviceId,
-                        raw: n,
-                    }))}
-                    value={filterDevices(qDeviceB)
-                        .map((n: any) => ({
-                            label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                            value: n.deviceId,
-                            raw: n,
-                        }))
-                        .find((o: any) => o.value === newConn.deviceBId)}
-                    on:select={(e) => onSelectDeviceB(e.detail?.value)}
-                    clearable={true}
-                    searchable={true}
-                    placeholder="Select device..."
-                    noOptionsMessage="No devices found"
-                    --listMaxHeight="300px"
-                />
+                 <Select
+                     items={filterDevices(qDeviceB).map((n: any) => ({
+                         label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                         value: n.deviceId,
+                         raw: n,
+                     }))}
+                     value={filterDevices(qDeviceB)
+                         .map((n: any) => ({
+                             label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                             value: n.deviceId,
+                             raw: n,
+                         }))
+                         .find((o: any) => o.value === newConn.deviceBId)}
+                     on:select={(e) => onSelectDeviceB(e.detail?.value)}
+                     clearable={true}
+                     searchable={true}
+                     placeholder="Select device..."
+                     --listMaxHeight="300px"
+                 />
             </div>
 
             <!-- Port B -->
@@ -257,48 +255,80 @@
                         >Port B <span class="text-error">*</span></span
                     >
                 </label>
-                <Select
-                    items={filterInterfaces(newConn.deviceBId, qPortB).map(
-                        (itf: any) => ({
-                            label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                            value: itf.id,
-                            raw: itf,
-                        }),
-                    )}
-                    value={filterInterfaces(newConn.deviceBId, qPortB)
-                        .map((itf: any) => ({
-                            label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                            value: itf.id,
-                            raw: itf,
-                        }))
-                        .find((o: any) => o.value === newConn.portBId)}
-                    on:select={(e) => onSelectPortB(e.detail?.value)}
-                    clearable={true}
-                    searchable={true}
-                    placeholder={newConn.deviceBId
-                        ? "Select port..."
-                        : "Select device first"}
-                    noOptionsMessage={newConn.deviceBId
-                        ? "No ports found"
-                        : "Select device first"}
-                    disabled={!newConn.deviceBId}
-                    --listMaxHeight="300px"
-                />
+                 <Select
+                     items={filterInterfaces(newConn.deviceBId, qPortB).map(
+                         (itf: any) => ({
+                             label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                             value: itf.id,
+                             raw: itf,
+                         }),
+                     )}
+                     value={filterInterfaces(newConn.deviceBId, qPortB)
+                         .map((itf: any) => ({
+                             label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                             value: itf.id,
+                             raw: itf,
+                         }))
+                         .find((o: any) => o.value === newConn.portBId)}
+                     on:select={(e) => onSelectPortB(e.detail?.value)}
+                     clearable={true}
+                     searchable={true}
+                     placeholder={newConn.deviceBId
+                         ? "Select port..."
+                         : "Select device first"}
+                     disabled={!newConn.deviceBId}
+                     --listMaxHeight="300px"
+                 />
             </div>
 
-            <!-- Description -->
-            <div class="form-control md:col-span-2">
-                <label class="label">
-                    <span class="label-text font-medium"
-                        >Description (optional)</span
-                    >
-                </label>
-                <input
-                    class="input input-bordered w-full"
-                    bind:value={newConn.description}
-                    placeholder="Enter connection description..."
-                />
-            </div>
+             <!-- Description -->
+             <div class="form-control md:col-span-2">
+                 <label class="label">
+                     <span class="label-text font-medium"
+                         >Description (optional)</span
+                     >
+                 </label>
+                 <input
+                     class="input input-bordered w-full"
+                     bind:value={newConn.description}
+                     placeholder="Enter connection description..."
+                 />
+             </div>
+
+             <!-- ODP Path Selection -->
+             <div class="form-control md:col-span-2">
+                 <label class="label">
+                     <span class="label-text font-medium">ODP Path (optional)</span>
+                 </label>
+                 <Select
+                    items={odpPoints.map((odp: OdpPoint) => ({
+                        label: `${odp.name} — ${odp.location}`,
+                        value: odp.id,
+                        raw: odp,
+                    }))}
+                    value={odpPoints
+                        .filter((odp: OdpPoint) => newConn.odpPath.includes(odp.id))
+                        .map((odp: OdpPoint) => ({
+                            label: `${odp.name} — ${odp.location}`,
+                            value: odp.id,
+                            raw: odp,
+                        }))}
+                     on:select={(e) => {
+                         const selectedIds = e.detail?.map((item: any) => item.value) || [];
+                         newConn.odpPath = selectedIds;
+                     }}
+                     multiple={true}
+                     clearable={true}
+                     searchable={true}
+                     placeholder="Select ODP points..."
+                     --listMaxHeight="300px"
+                 />
+                 <label class="label">
+                     <span class="label-text-alt text-base-content/60"
+                         >Selected: {newConn.odpPath.length} ODP point(s)</span
+                     >
+                 </label>
+             </div>
         </div>
 
         <div class="modal-action">
