@@ -14,6 +14,8 @@
         getEventSource,
         fetchAllOdpPoints,
         saveOdpPoint,
+        updateOdpPoint,
+        deleteOdpPoint,
     } from "$lib/api";
     import {
         greenIcon,
@@ -23,10 +25,11 @@
         clearHighlight,
         highlightRoute,
     } from "$lib/map";
-    import AddConnectionModal from "$lib/components/map/AddConnectionModal.svelte";
-    import ManageConnectionsModal from "$lib/components/map/ManageConnectionsModal.svelte";
-    import EditCustomRoutesModal from "$lib/components/map/EditCustomRoutesModal.svelte";
-    import AddOdpPointModal from "$lib/components/map/AddOdpPointModal.svelte";
+import AddConnectionModal from "$lib/components/map/AddConnectionModal.svelte";
+import ManageConnectionsModal from "$lib/components/map/ManageConnectionsModal.svelte";
+import EditCustomRoutesModal from "$lib/components/map/EditCustomRoutesModal.svelte";
+import AddOdpPointModal from "$lib/components/map/AddOdpPointModal.svelte";
+import EditOdpPointModal from "$lib/components/map/EditOdpPointModal.svelte";
 
     // --- Component State ---
     let mapContainer: HTMLElement;
@@ -41,7 +44,9 @@
     let showManageConnectionsModal = $state(false);
     let showEditCustomRoutesModal = $state(false);
     let showAddOdpModal = $state(false);
+    let showEditOdpModal = $state(false);
     let selectedConnectionForDrawing = $state<Connection | null>(null);
+    let selectedOdpForEdit = $state<OdpPoint | null>(null);
     let newOdpCoordinates = $state<{ lat: number; lng: number } | null>(null);
     let newOdpLocation = $state<string>("");
     let isDrawingOdp = $state(false);
@@ -89,6 +94,10 @@
             if (isNaN(lat) || isNaN(lng)) return;
             L.marker([lat, lng], { icon: blueIcon })
                 .bindPopup(`<b>${odp.name}</b><br>(ODP)`)
+                .on('click', () => {
+                    selectedOdpForEdit = odp;
+                    showEditOdpModal = true;
+                })
                 .addTo(markerLayer);
         });
 
@@ -191,6 +200,38 @@
         showAddOdpModal = false;
         newOdpCoordinates = null;
         newOdpLocation = "";
+    };
+
+    const handleUpdateOdp = async (detail: { id: number; name: string; location: string; notes: string }) => {
+        try {
+            await updateOdpPoint(detail.id, {
+                name: detail.name,
+                location: detail.location,
+                notes: detail.notes,
+                lat: parseFloat(selectedOdpForEdit?.lat || "0"),
+                lng: parseFloat(selectedOdpForEdit?.lng || "0"),
+            });
+            alert("ODP updated successfully!");
+            await fetchAllData();
+            showEditOdpModal = false;
+            selectedOdpForEdit = null;
+        } catch (e) {
+            console.error("Failed to update ODP:", e);
+            alert("Failed to update ODP.");
+        }
+    };
+
+    const handleDeleteOdp = async (id: number) => {
+        try {
+            await deleteOdpPoint(id);
+            alert("ODP deleted successfully!");
+            await fetchAllData();
+            showEditOdpModal = false;
+            selectedOdpForEdit = null;
+        } catch (e) {
+            console.error("Failed to delete ODP:", e);
+            alert("Failed to delete ODP.");
+        }
     };
 
     // --- Custom Route Editing ---
@@ -406,23 +447,87 @@
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-2xl font-bold text-base-content">Network Map</h2>
         {#if !selectedConnectionForDrawing && !isDrawingOdp}
-            <div class="flex gap-2">
-                <button
-                    class="btn btn-primary"
-                    onclick={() => (showEditCustomRoutesModal = true)}
-                    >Edit Custom Routes</button
-                >
-                <button
-                    class="btn btn-secondary"
-                    onclick={() => (showAddConnectionModal = true)}
-                    >Add Connection</button
-                >
-                <button class="btn btn-info" onclick={startDrawingOdp}>Add ODP</button>
-                <button
-                    class="btn btn-accent"
-                    onclick={() => (showManageConnectionsModal = true)}
-                    >Manage Connections</button
-                >
+            <div class="menu-bar">
+                <!-- Connection Menu -->
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-secondary">
+                        Connection
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                        <li><a onclick={() => (showAddConnectionModal = true)}>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                            Add Connection</a></li>
+                        <li><a onclick={() => (showManageConnectionsModal = true)}>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Manage Connections</a></li>
+                    </ul>
+                </div>
+
+                <!-- Routes Menu -->
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-primary">
+                        Routes
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                        <li><a onclick={() => (showEditCustomRoutesModal = true)}>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                            </svg>
+                            Edit Custom Routes</a></li>
+                    </ul>
+                </div>
+
+                <!-- ODP Menu -->
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-info">
+                        ODP
+                        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                        <li><a onclick={startDrawingOdp}>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Add ODP</a></li>
+                        <li class="divider"></li>
+                        <li><a onclick={() => {
+                            if (selectedOdpForEdit) {
+                                showEditOdpModal = true;
+                            } else {
+                                alert("Please click on an ODP marker first to select it for editing.");
+                            }
+                        }}>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                            Edit ODP</a></li>
+                        <li><a onclick={() => {
+                            if (selectedOdpForEdit) {
+                                showEditOdpModal = true;
+                            } else {
+                                alert("Please click on an ODP marker first to select it for deletion.");
+                            }
+                        }}>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Delete ODP</a></li>
+                    </ul>
+                </div>
             </div>
         {:else if selectedConnectionForDrawing}
             <button class="btn btn-error" onclick={stopDrawing}
@@ -488,6 +593,17 @@
         on:close={cancelOdpDrawing}
         on:save={(e) => handleSaveOdp(e.detail)}
     />
+{/if}
+
+{#if showEditOdpModal}
+    <div class="edit-odp-modal">
+        <EditOdpPointModal
+            odpPoint={selectedOdpForEdit}
+            on:close={() => (showEditOdpModal = false)}
+            on:save={(e) => handleUpdateOdp(e.detail)}
+            on:delete={(e) => handleDeleteOdp(e.detail.id)}
+        />
+    </div>
 {/if}
 
 <style>
@@ -565,5 +681,137 @@
     }
     :global(.svelte-select.focused .list-container) {
         z-index: 10000 !important;
+    }
+
+    /* Menu Bar Styling */
+    .menu-bar {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .menu-bar .dropdown {
+        position: relative;
+    }
+
+    .menu-bar .dropdown .btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 120px;
+        justify-content: space-between;
+    }
+
+    .menu-bar .dropdown-content {
+        min-width: 180px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        border: 1px solid hsl(var(--b3) / 0.2);
+    }
+
+    .menu-bar .dropdown-content li {
+        padding: 0;
+    }
+
+    .menu-bar .dropdown-content li a {
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: hsl(var(--bc));
+        transition: all 0.2s ease;
+    }
+
+    .menu-bar .dropdown-content li a:hover {
+        background-color: hsl(var(--b2));
+        color: hsl(var(--bc));
+    }
+
+    .menu-bar .dropdown-content li a svg {
+        width: 16px;
+        height: 16px;
+        opacity: 0.7;
+    }
+
+    /* Edit ODP Modal Styling */
+    .edit-odp-modal .modal-box {
+        max-width: 500px;
+    }
+
+    .edit-odp-modal .form-control {
+        margin-bottom: 1rem;
+    }
+
+    .edit-odp-modal .label {
+        margin-bottom: 0.5rem;
+    }
+
+    .edit-odp-modal .input,
+    .edit-odp-modal .textarea {
+        width: 100%;
+    }
+
+    .edit-odp-modal .modal-action {
+        justify-content: space-between;
+    }
+
+    .edit-odp-modal .btn-error {
+        background-color: hsl(var(--er));
+        border-color: hsl(var(--er));
+    }
+
+    .edit-odp-modal .btn-error:hover {
+        background-color: hsl(var(--er) / 0.8);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .menu-bar {
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+
+        .menu-bar .btn {
+            min-width: 100px;
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .menu-bar .dropdown-content {
+            min-width: 160px;
+        }
+
+        .menu-bar .dropdown-content li a {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .menu-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .menu-bar .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .menu-bar .dropdown-content {
+            width: 100%;
+            position: static;
+            box-shadow: none;
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin-top: 0.5rem;
+        }
+
+        .menu-bar .dropdown-content li a {
+            justify-content: center;
+            background: hsl(var(--b2));
+            border-radius: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
     }
 </style>

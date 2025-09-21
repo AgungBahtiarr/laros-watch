@@ -110,6 +110,29 @@ export const saveOdpPoint = async (payload: SaveOdpPointPayload) => {
     return await res.json();
 };
 
+export const updateOdpPoint = async (id: number, payload: SaveOdpPointPayload) => {
+    const res = await fetch(`${API_BASE_URL}/nodes/odp/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, lat: String(payload.lat), lng: String(payload.lng) }),
+    });
+    if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || `HTTP ${res.status}`);
+    }
+    return await res.json();
+};
+
+export const deleteOdpPoint = async (id: number) => {
+    const res = await fetch(`${API_BASE_URL}/nodes/odp/${id}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || `HTTP ${res.status}`);
+    }
+};
+
 export const getEventSource = () => {
     return new EventSource(`${API_BASE_URL}/nodes/status/events`);
 };
