@@ -314,8 +314,8 @@
                             raw: odp,
                         }))}
                      on:select={(e) => {
-                         const selectedIds = e.detail?.map((item: any) => item.value) || [];
-                         newConn.odpPath = selectedIds;
+                         const items = e.detail ? [].concat(e.detail) : [];
+                         newConn.odpPath = items.map((item: any) => item.value);
                      }}
                      multiple={true}
                      clearable={true}

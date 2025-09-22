@@ -92,6 +92,8 @@ export const createRoute = (
 
     const waypoints: L.LatLng[] = [start];
 
+    console.log(`[Connection ${conn.id}] ODP Path:`, JSON.parse(JSON.stringify(conn.odpPath || null)));
+
     // Add ODP waypoints if they exist
     if (conn.odpPath && conn.odpPath.length > 0) {
         const odpWaypoints: L.LatLng[] = conn.odpPath.map((odp) => {
@@ -106,42 +108,10 @@ export const createRoute = (
 
         waypoints.push(...odpWaypoints);
     }
-    // Add custom route waypoints if they exist (fallback if no ODP path)
-    else if (conn.customRoute?.coordinates && conn.customRoute.coordinates.length > 0) {
-        let coords: L.LatLng[] = conn.customRoute.coordinates.map((c: [number, number]) =>
-            L.latLng(c[0], c[1]),
-        );
-
-        if (coords.length > 0) {
-            const distFirstToA = coords[0].distanceTo(start);
-            const distFirstToB = coords[0].distanceTo(end);
-            if (distFirstToB < distFirstToA) {
-                coords = coords.reverse();
-            }
-        }
-
-        const minEdgeDist = 5;
-        coords = coords.filter((p) => {
-            const closeToA = p.distanceTo(start) <= minEdgeDist;
-            const closeToB = p.distanceTo(end) <= minEdgeDist;
-            return !(closeToA || closeToB);
-        });
-
-        const deduped: L.LatLng[] = [];
-        const minStepDist = 1;
-        for (const p of coords) {
-            if (
-                deduped.length === 0 ||
-                deduped[deduped.length - 1].distanceTo(p) > minStepDist
-            ) {
-                deduped.push(p);
-            }
-        }
-
-        waypoints.push(...deduped);
-    }
 
     waypoints.push(end);
+
+    console.log(`[Connection ${conn.id}] Final Waypoints:`, waypoints);
 
     const lineStyle: L.PathOptions = { color, opacity: 1, weight: 5 };
     const paneName = `route-pane-${conn.id}`;
