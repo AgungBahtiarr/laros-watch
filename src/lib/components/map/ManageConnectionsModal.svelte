@@ -1,11 +1,17 @@
-
 <script lang="ts">
     import Select from "svelte-select";
     import { createEventDispatcher } from "svelte";
     import type { Node, Connection, OdpPoint } from "$lib/types";
-    import { updateConnection, deleteConnection as apiDeleteConnection } from "$lib/api";
+    import {
+        updateConnection,
+        deleteConnection as apiDeleteConnection,
+    } from "$lib/api";
 
-    let { connections, allNodes, odpPoints } = $props<{ connections: Connection[]; allNodes: Node[]; odpPoints: OdpPoint[] }>();
+    let { connections, allNodes, odpPoints } = $props<{
+        connections: Connection[];
+        allNodes: Node[];
+        odpPoints: OdpPoint[];
+    }>();
 
     const dispatch = createEventDispatcher();
 
@@ -30,10 +36,19 @@
         description: "",
         odpPath: [],
     });
+    let selectedOdpItems = $state<any[]>([]);
+
+    $effect(() => {
+        editConn.odpPath = selectedOdpItems.map((item) => item.value);
+    });
 
     const beginEdit = (conn: any) => {
         manageConnError = null;
         editingConnection = conn;
+        const initialOdpPath =
+            conn.odpPath
+                ?.map((odp: any) => odp.id)
+                .filter((id: any) => id != null) ?? [];
         editConn = {
             id: conn.id,
             deviceAId: conn.deviceAId,
@@ -41,8 +56,15 @@
             deviceBId: conn.deviceBId,
             portBId: conn.portBId,
             description: conn.description ?? "",
-            odpPath: conn.odpPath?.map((odp: any) => odp.id) ?? [],
+            odpPath: initialOdpPath,
         };
+        selectedOdpItems = odpPoints
+            .filter((odp) => initialOdpPath.includes(odp.id))
+            .map((odp) => ({
+                label: `${odp.name} — ${odp.location}`,
+                value: odp.id,
+                raw: odp,
+            }));
     };
 
     const cancelEdit = () => {
@@ -56,6 +78,7 @@
             description: "",
             odpPath: [],
         };
+        selectedOdpItems = [];
     };
 
     const submitEditConnection = async () => {
@@ -72,7 +95,11 @@
         }
         manageConnLoading = true;
         try {
-            await updateConnection(editConn as unknown as Connection);
+            const payload = {
+                ...editConn,
+                odpPath: (editConn.odpPath || []).filter((id) => id != null),
+            };
+            await updateConnection(payload as unknown as Connection);
             dispatch("update");
             cancelEdit();
         } catch (e) {
@@ -83,7 +110,8 @@
     };
 
     const deleteConnection = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this connection?")) return;
+        if (!confirm("Are you sure you want to delete this connection?"))
+            return;
         deletingConnId = id;
         manageConnError = null;
         try {
@@ -133,7 +161,9 @@
     <div class="modal-box w-11/12 max-w-7xl max-h-[90vh] flex flex-col">
         <!-- Modal Header -->
         <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xl font-bold text-base-content">Manage Connections</h3>
+            <h3 class="text-xl font-bold text-base-content">
+                Manage Connections
+            </h3>
             <button
                 class="btn btn-sm btn-circle btn-ghost"
                 onclick={() => dispatch("close")}>✕</button
@@ -165,7 +195,8 @@
             <div class="flex justify-between items-center mb-4">
                 <h4 class="text-lg font-semibold">
                     <span class="text-secondary">🔗</span> Existing Connections
-                    <span class="badge badge-neutral">{connections.length}</span>
+                    <span class="badge badge-neutral">{connections.length}</span
+                    >
                 </h4>
             </div>
 
@@ -195,8 +226,12 @@
 
                             {#if editingConnection?.id === conn.id}
                                 <!-- Edit Row -->
-                                <tr class="bg-warning/10 border-l-4 border-warning">
-                                    <td class="text-center font-bold">{i + 1}</td>
+                                <tr
+                                    class="bg-warning/10 border-l-4 border-warning"
+                                >
+                                    <td class="text-center font-bold"
+                                        >{i + 1}</td
+                                    >
                                     <td colspan="5" class="p-4">
                                         <div
                                             class="bg-base-100 rounded-lg p-4 shadow-sm"
@@ -204,239 +239,250 @@
                                             <div
                                                 class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4"
                                             >
-                                                 <!-- Description -->
-                                                 <div class="form-control xl:col-span-3">
-                                                     <label class="label">
-                                                         <span class="label-text font-medium"
-                                                             >Description</span
-                                                         >
-                                                     </label>
-                                                     <input
-                                                         class="input input-bordered"
-                                                         bind:value={
-                                                             editConn.description
-                                                         }
-                                                         placeholder="Connection description"
-                                                     />
-                                                 </div>
+                                                <!-- Description -->
+                                                <div
+                                                    class="form-control xl:col-span-3"
+                                                >
+                                                    <label class="label">
+                                                        <span
+                                                            class="label-text font-medium"
+                                                            >Description</span
+                                                        >
+                                                    </label>
+                                                    <input
+                                                        class="input input-bordered"
+                                                        bind:value={
+                                                            editConn.description
+                                                        }
+                                                        placeholder="Connection description"
+                                                    />
+                                                </div>
 
-                                                 <!-- ODP Path Selection -->
-                                                 <div class="form-control xl:col-span-3">
-                                                     <label class="label">
-                                                         <span class="label-text font-medium">ODP Path (optional)</span>
-                                                     </label>
-                                                     <Select
-                    items={odpPoints.map((odp: OdpPoint) => ({
-                        label: `${odp.name} — ${odp.location}`,
-                        value: odp.id,
-                        raw: odp,
-                    }))}
-                    value={odpPoints
-                        .filter((odp: OdpPoint) => editConn.odpPath.includes(odp.id))
-                        .map((odp: OdpPoint) => ({
-                            label: `${odp.name} — ${odp.location}`,
-                            value: odp.id,
-                            raw: odp,
-                        }))}
-                                                         on:select={(e) => {
-                                                             const selectedIds = e.detail?.map((item: any) => item.value) || [];
-                                                             editConn.odpPath = selectedIds;
-                                                         }}
-                                                         multiple={true}
-                                                         clearable={true}
-                                                         searchable={true}
-                                                         placeholder="Select ODP points..."
-                                                         --listMaxHeight="300px"
-                                                     />
-                                                     <label class="label">
-                                                         <span class="label-text-alt text-base-content/60"
-                                                             >Selected: {editConn.odpPath.length} ODP point(s)</span
-                                                         >
-                                                     </label>
-                                                 </div>
+                                                <!-- ODP Path Selection -->
+                                                <div
+                                                    class="form-control xl:col-span-3"
+                                                >
+                                                    <label class="label">
+                                                        <span
+                                                            class="label-text font-medium"
+                                                            >ODP Path (optional)</span
+                                                        >
+                                                    </label>
+                                                    <Select
+                                                        items={odpPoints.map(
+                                                            (
+                                                                odp: OdpPoint,
+                                                            ) => ({
+                                                                label: `${odp.name} — ${odp.location}`,
+                                                                value: odp.id,
+                                                                raw: odp,
+                                                            }),
+                                                        )}
+                                                        bind:value={
+                                                            selectedOdpItems
+                                                        }
+                                                        multiple={true}
+                                                        clearable={true}
+                                                        searchable={true}
+                                                        placeholder="Select ODP points..."
+                                                        --listMaxHeight="300px"
+                                                    />
+                                                    <label class="label">
+                                                        <span
+                                                            class="label-text-alt text-base-content/60"
+                                                            >Selected: {editConn
+                                                                .odpPath.length}
+                                                            ODP point(s)</span
+                                                        >
+                                                    </label>
+                                                </div>
 
                                                 <!-- Device A -->
                                                 <div class="form-control">
                                                     <label class="label">
-                                                        <span class="label-text font-medium"
+                                                        <span
+                                                            class="label-text font-medium"
                                                             >Device A</span
                                                         >
                                                     </label>
-                                                     <Select
-                                                         items={filterDevices(
-                                                             "",
-                                                         ).map((n: any) => ({
-                                                             label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                                                             value: n.deviceId,
-                                                             raw: n,
-                                                         }))}
-                                                         value={filterDevices(
-                                                             "",
-                                                         )
-                                                             .map((n: any) => ({
-                                                                 label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                                                                 value: n.deviceId,
-                                                                 raw: n,
-                                                             }))
-                                                             .find(
-                                                                 (o: any) =>
-                                                                     o.value ===
-                                                                     editConn.deviceAId,
-                                                             )}
-                                                         on:select={(e) => {
-                                                             editConn.deviceAId =
-                                                                 Number(
-                                                                     e.detail
-                                                                         ?.value ??
-                                                                         null,
-                                                                 );
-                                                             editConn.portAId =
-                                                                 null;
-                                                         }}
-                                                         clearable={true}
-                                                         searchable={true}
-                                                         placeholder="Select device..."
-                                                         --listMaxHeight="300px"
-                                                     />
+                                                    <Select
+                                                        items={filterDevices(
+                                                            "",
+                                                        ).map((n: any) => ({
+                                                            label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                                                            value: n.deviceId,
+                                                            raw: n,
+                                                        }))}
+                                                        value={filterDevices("")
+                                                            .map((n: any) => ({
+                                                                label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                                                                value: n.deviceId,
+                                                                raw: n,
+                                                            }))
+                                                            .find(
+                                                                (o: any) =>
+                                                                    o.value ===
+                                                                    editConn.deviceAId,
+                                                            )}
+                                                        on:select={(e) => {
+                                                            editConn.deviceAId =
+                                                                Number(
+                                                                    e.detail
+                                                                        ?.value ??
+                                                                        null,
+                                                                );
+                                                            editConn.portAId =
+                                                                null;
+                                                        }}
+                                                        clearable={true}
+                                                        searchable={true}
+                                                        placeholder="Select device..."
+                                                        --listMaxHeight="300px"
+                                                    />
                                                 </div>
 
                                                 <!-- Port A -->
                                                 <div class="form-control">
                                                     <label class="label">
-                                                        <span class="label-text font-medium"
+                                                        <span
+                                                            class="label-text font-medium"
                                                             >Port A</span
                                                         >
                                                     </label>
-                                                     <Select
-                                                         items={filterInterfaces(
-                                                             editConn.deviceAId,
-                                                             "",
-                                                         ).map((itf: any) => ({
-                                                             label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                                                             value: itf.id,
-                                                             raw: itf,
-                                                         }))}
-                                                         value={filterInterfaces(
-                                                             editConn.deviceAId,
-                                                             "",
-                                                         )
-                                                             .map((itf: any) => ({
-                                                                 label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                                                                 value: itf.id,
-                                                                 raw: itf,
-                                                             }))
-                                                             .find(
-                                                                 (o: any) =>
-                                                                     o.value ===
-                                                                     editConn.portAId,
-                                                             )}
-                                                         on:select={(e) =>
-                                                             (editConn.portAId =
-                                                                 Number(
-                                                                     e.detail
-                                                                         ?.value ??
-                                                                         null,
-                                                                 ))}
-                                                         clearable={true}
-                                                         searchable={true}
-                                                         placeholder={editConn.deviceAId
-                                                             ? "Select port..."
-                                                             : "Select device first"}
-                                                         disabled={!editConn.deviceAId}
-                                                         --listMaxHeight="300px"
-                                                     />
+                                                    <Select
+                                                        items={filterInterfaces(
+                                                            editConn.deviceAId,
+                                                            "",
+                                                        ).map((itf: any) => ({
+                                                            label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                                            value: itf.id,
+                                                            raw: itf,
+                                                        }))}
+                                                        value={filterInterfaces(
+                                                            editConn.deviceAId,
+                                                            "",
+                                                        )
+                                                            .map(
+                                                                (itf: any) => ({
+                                                                    label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                                                    value: itf.id,
+                                                                    raw: itf,
+                                                                }),
+                                                            )
+                                                            .find(
+                                                                (o: any) =>
+                                                                    o.value ===
+                                                                    editConn.portAId,
+                                                            )}
+                                                        on:select={(e) =>
+                                                            (editConn.portAId =
+                                                                Number(
+                                                                    e.detail
+                                                                        ?.value ??
+                                                                        null,
+                                                                ))}
+                                                        clearable={true}
+                                                        searchable={true}
+                                                        placeholder={editConn.deviceAId
+                                                            ? "Select port..."
+                                                            : "Select device first"}
+                                                        disabled={!editConn.deviceAId}
+                                                        --listMaxHeight="300px"
+                                                    />
                                                 </div>
 
                                                 <!-- Device B -->
                                                 <div class="form-control">
                                                     <label class="label">
-                                                        <span class="label-text font-medium"
+                                                        <span
+                                                            class="label-text font-medium"
                                                             >Device B</span
                                                         >
                                                     </label>
-                                                     <Select
-                                                         items={filterDevices(
-                                                             "",
-                                                         ).map((n: any) => ({
-                                                             label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                                                             value: n.deviceId,
-                                                             raw: n,
-                                                         }))}
-                                                         value={filterDevices(
-                                                             "",
-                                                         )
-                                                             .map((n: any) => ({
-                                                                 label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
-                                                                 value: n.deviceId,
-                                                                 raw: n,
-                                                             }))
-                                                             .find(
-                                                                 (o: any) =>
-                                                                     o.value ===
-                                                                     editConn.deviceBId,
-                                                             )}
-                                                         on:select={(e) => {
-                                                             editConn.deviceBId =
-                                                                 Number(
-                                                                     e.detail
-                                                                         ?.value ??
-                                                                         null,
-                                                                 );
-                                                             editConn.portBId =
-                                                                 null;
-                                                         }}
-                                                         clearable={true}
-                                                         searchable={true}
-                                                         placeholder="Select device..."
-                                                         --listMaxHeight="300px"
-                                                     />
+                                                    <Select
+                                                        items={filterDevices(
+                                                            "",
+                                                        ).map((n: any) => ({
+                                                            label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                                                            value: n.deviceId,
+                                                            raw: n,
+                                                        }))}
+                                                        value={filterDevices("")
+                                                            .map((n: any) => ({
+                                                                label: `${n.name} (ID: ${n.deviceId}) — ${n.ipMgmt ?? "-"}`,
+                                                                value: n.deviceId,
+                                                                raw: n,
+                                                            }))
+                                                            .find(
+                                                                (o: any) =>
+                                                                    o.value ===
+                                                                    editConn.deviceBId,
+                                                            )}
+                                                        on:select={(e) => {
+                                                            editConn.deviceBId =
+                                                                Number(
+                                                                    e.detail
+                                                                        ?.value ??
+                                                                        null,
+                                                                );
+                                                            editConn.portBId =
+                                                                null;
+                                                        }}
+                                                        clearable={true}
+                                                        searchable={true}
+                                                        placeholder="Select device..."
+                                                        --listMaxHeight="300px"
+                                                    />
                                                 </div>
 
                                                 <!-- Port B -->
                                                 <div class="form-control">
                                                     <label class="label">
-                                                        <span class="label-text font-medium"
+                                                        <span
+                                                            class="label-text font-medium"
                                                             >Port B</span
                                                         >
                                                     </label>
-                                                     <Select
-                                                         items={filterInterfaces(
-                                                             editConn.deviceBId,
-                                                             "",
-                                                         ).map((itf: any) => ({
-                                                             label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                                                             value: itf.id,
-                                                             raw: itf,
-                                                         }))}
-                                                         value={filterInterfaces(
-                                                             editConn.deviceBId,
-                                                             "",
-                                                         )
-                                                             .map((itf: any) => ({
-                                                                 label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
-                                                                 value: itf.id,
-                                                                 raw: itf,
-                                                             }))
-                                                             .find(
-                                                                 (o: any) =>
-                                                                     o.value ===
-                                                                     editConn.portBId,
-                                                             )}
-                                                         on:select={(e) =>
-                                                             (editConn.portBId =
-                                                                 Number(
-                                                                     e.detail
-                                                                         ?.value ??
-                                                                         null,
-                                                                 ))}
-                                                         clearable={true}
-                                                         searchable={true}
-                                                         placeholder={editConn.deviceBId
-                                                             ? "Select port..."
-                                                             : "Select device first"}
-                                                         disabled={!editConn.deviceBId}
-                                                         --listMaxHeight="300px"
-                                                     />
+                                                    <Select
+                                                        items={filterInterfaces(
+                                                            editConn.deviceBId,
+                                                            "",
+                                                        ).map((itf: any) => ({
+                                                            label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                                            value: itf.id,
+                                                            raw: itf,
+                                                        }))}
+                                                        value={filterInterfaces(
+                                                            editConn.deviceBId,
+                                                            "",
+                                                        )
+                                                            .map(
+                                                                (itf: any) => ({
+                                                                    label: `${itf.ifName} — ${itf.ifDescr ?? "-"} (id: ${itf.id})`,
+                                                                    value: itf.id,
+                                                                    raw: itf,
+                                                                }),
+                                                            )
+                                                            .find(
+                                                                (o: any) =>
+                                                                    o.value ===
+                                                                    editConn.portBId,
+                                                            )}
+                                                        on:select={(e) =>
+                                                            (editConn.portBId =
+                                                                Number(
+                                                                    e.detail
+                                                                        ?.value ??
+                                                                        null,
+                                                                ))}
+                                                        clearable={true}
+                                                        searchable={true}
+                                                        placeholder={editConn.deviceBId
+                                                            ? "Select port..."
+                                                            : "Select device first"}
+                                                        disabled={!editConn.deviceBId}
+                                                        --listMaxHeight="300px"
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
@@ -494,31 +540,35 @@
                                             >
                                                 ID: {conn.id}
                                             </div>
-                                             <div
-                                                 class="flex items-center gap-2 text-xs"
-                                             >
-                                                 <span
-                                                     class="badge badge-outline badge-xs"
-                                                 >
-                                                     {nodeA?.name ?? "Unknown"} ↔
-                                                     {nodeB?.name ?? "Unknown"}
-                                                 </span>
-                                                 {#if conn.odpPath && conn.odpPath.length > 0}
-                                                     <span
-                                                         class="badge badge-info badge-xs"
-                                                     >
-                                                         {conn.odpPath.length} ODP point(s)
-                                                     </span>
-                                                 {/if}
-                                             </div>
+                                            <div
+                                                class="flex items-center gap-2 text-xs"
+                                            >
+                                                <span
+                                                    class="badge badge-outline badge-xs"
+                                                >
+                                                    {nodeA?.name ?? "Unknown"} ↔
+                                                    {nodeB?.name ?? "Unknown"}
+                                                </span>
+                                                {#if conn.odpPath && conn.odpPath.length > 0}
+                                                    <span
+                                                        class="badge badge-info badge-xs"
+                                                    >
+                                                        {conn.odpPath.length} ODP
+                                                        point(s)
+                                                    </span>
+                                                {/if}
+                                            </div>
                                         </div>
                                     </td>
                                     <td>
                                         <div class="space-y-1">
                                             <div class="font-medium text-sm">
-                                                {nodeA?.name ?? "Unknown Device"}
+                                                {nodeA?.name ??
+                                                    "Unknown Device"}
                                             </div>
-                                            <div class="text-xs text-base-content/60">
+                                            <div
+                                                class="text-xs text-base-content/60"
+                                            >
                                                 {nodeA?.ipMgmt ?? "-"}
                                             </div>
                                             <div
@@ -538,9 +588,12 @@
                                     <td>
                                         <div class="space-y-1">
                                             <div class="font-medium text-sm">
-                                                {nodeB?.name ?? "Unknown Device"}
+                                                {nodeB?.name ??
+                                                    "Unknown Device"}
                                             </div>
-                                            <div class="text-xs text-base-content/60">
+                                            <div
+                                                class="text-xs text-base-content/60"
+                                            >
                                                 {nodeB?.ipMgmt ?? "-"}
                                             </div>
                                             <div
