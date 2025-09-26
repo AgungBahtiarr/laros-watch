@@ -1,0 +1,242 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+// Define the type for a single node based on the API response
+interface Interface {
+    id: number;
+    nodeId: number;
+    ifIndex: number;
+    ifName: string;
+    ifDescr: string;
+    ifType: string;
+    ifPhysAddress: string;
+    ifOperStatus: number;
+    opticalTx: string | null;
+    opticalRx: string | null;
+    sfpInfo: any | null; // Adjust 'any' if you have a specific type for sfpInfo
+    lastChange: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface Node {
+    id: number;
+    deviceId: number;
+    name: string;
+    popLocation: string;
+    lat: string;
+    lng: string;
+    ipMgmt: string;
+    snmpCommunity: string;
+    status: boolean;
+    os: string;
+    cpuUsage: number;
+    ramUsage: number;
+    createdAt: string;
+    updatedAt: string;
+    interfaces: Interface[];
+}
+
+let nodes: Node[] = [];
+try {
+    const response = await fetch("http://localhost:3000/api/nodes");
+    if (response.ok) {
+        nodes = await response.json();
+    }
+} catch (error) {
+    console.error("Failed to fetch nodes:", error);
+}
+---
+
+<Layout title="Device Nodes">
+    <main class="container mx-auto p-4">
+        <div class="prose mb-8">
+            <h1>Device Nodes</h1>
+        </div>
+        <div
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        >
+            {
+                nodes.length > 0 ? (
+                    nodes.map((node) => (
+                        <div
+                            id={`node-card-${node.id}`}
+                            class="card bg-base-100 border border-base-200"
+                        >
+                            <div class="card-body">
+                                <h2 class="card-title">
+                                    {node.name}
+                                    <div
+                                        id={`node-status-badge-${node.id}`}
+                                        class={`badge ${node.status ? "badge-success" : "badge-error"}`}
+                                    >
+                                        {node.status ? "Online" : "Offline"}
+                                    </div>
+                                </h2>
+                                <p class="text-sm text-base-content text-opacity-60">
+                                    {node.popLocation}
+                                </p>
+                                <div class="my-4">
+                                    <p>
+                                        <strong>IP:</strong> {node.ipMgmt}
+                                    </p>
+                                    <p>
+                                        <strong>OS:</strong> {node.os}
+                                    </p>
+                                </div>
+                                <div class="space-y-2">
+                                    <div>
+                                        <label
+                                            for={`cpu-${node.id}`}
+                                            class="text-xs font-semibold"
+                                        >
+                                            CPU Usage
+                                        </label>
+                                        <progress
+                                            id={`node-cpu-progress-${node.id}`}
+                                            class="progress progress-primary w-full"
+                                            value={node.cpuUsage}
+                                            max="100"
+                                        />
+                                        <span
+                                            id={`node-cpu-text-${node.id}`}
+                                            class="text-xs"
+                                        >
+                                            {node.cpuUsage}%
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <label
+                                            for={`ram-${node.id}`}
+                                            class="text-xs font-semibold"
+                                        >
+                                            RAM Usage
+                                        </label>
+                                        <progress
+                                            id={`node-ram-progress-${node.id}`}
+                                            class="progress progress-secondary w-full"
+                                            value={node.ramUsage}
+                                            max="100"
+                                        />
+                                        <span
+                                            id={`node-ram-text-${node.id}`}
+                                            class="text-xs"
+                                        >
+                                            {node.ramUsage}%
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="card-actions justify-end mt-4">
+                                    <a
+                                        href={`/nodes/${node.id}`}
+                                        class="btn btn-primary"
+                                    >
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div class="col-span-full text-center">
+                        <p>No nodes found or API is unavailable.</p>
+                    </div>
+                )
+            }
+        </div>
+    </main>
+
+    <script>
+        let eventSource;
+
+        function initSSE() {
+            // If an EventSource already exists and is connecting or open, do nothing.
+            if (
+                eventSource &&
+                (eventSource.readyState === 0 || eventSource.readyState === 1)
+            ) {
+                console.log("SSE connection already exists.");
+                return;
+            }
+
+            // If it exists but is closed, close it properly before creating a new one.
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            console.log("Initializing new SSE connection from Astro page...");
+            try {
+                eventSource = new EventSource(
+                    "http://localhost:3000/api/nodes/status/events",
+                );
+
+                eventSource.onopen = () => {
+                    console.log("SSE Connection Opened from Astro page!");
+                };
+
+                eventSource.addEventListener("notification", (event) => {
+                    console.log("SSE notification received:", event.data);
+                    try {
+                        const eventData = JSON.parse(event.data);
+                        const nodeChanges = eventData.nodeChanges;
+
+                        if (nodeChanges && Array.isArray(nodeChanges)) {
+                            nodeChanges.forEach((changedNode) => {
+                                const nodeId = changedNode.id;
+                                if (!nodeId) return;
+
+                                const statusBadge = document.getElementById(
+                                    `node-status-badge-${nodeId}`,
+                                );
+                                const cpuProgress = document.getElementById(
+                                    `node-cpu-progress-${nodeId}`,
+                                );
+                                const cpuText = document.getElementById(
+                                    `node-cpu-text-${nodeId}`,
+                                );
+                                const ramProgress = document.getElementById(
+                                    `node-ram-progress-${nodeId}`,
+                                );
+                                const ramText = document.getElementById(
+                                    `node-ram-text-${nodeId}`,
+                                );
+
+                                if (statusBadge) {
+                                    statusBadge.textContent = changedNode.status
+                                        ? "Online"
+                                        : "Offline";
+                                    statusBadge.className = `badge ${changedNode.status ? "badge-success" : "badge-error"}`;
+                                }
+                                if (cpuProgress && cpuText) {
+                                    cpuProgress.value = changedNode.cpuUsage;
+                                    cpuText.textContent = `${changedNode.cpuUsage}%`;
+                                }
+                                if (ramProgress && ramText) {
+                                    ramProgress.value = changedNode.ramUsage;
+                                    ramText.textContent = `${changedNode.ramUsage}%`;
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error(
+                            "Failed to parse SSE data or update UI:",
+                            error,
+                        );
+                    }
+                });
+
+                eventSource.onerror = (error) => {
+                    console.error("SSE connection error on Astro page:", error);
+                };
+            } catch (e) {
+                console.error("Error creating EventSource on Astro page:", e);
+            }
+        }
+
+        // Run the initializer when the page loads or navigates.
+        document.addEventListener("astro:page-load", initSSE);
+
+        // Also run it on the initial load immediately.
+        initSSE();
+    </script>
+</Layout>
