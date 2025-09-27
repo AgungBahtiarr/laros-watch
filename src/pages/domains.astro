@@ -209,6 +209,7 @@ function formatDate(dateString: string) {
                         <th>Status</th>
                         <th>Expires At</th>
                         <th>Last Changed</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -233,11 +234,20 @@ function formatDate(dateString: string) {
                                     </td>
                                     <td>{formatDate(domain.expiresAt)}</td>
                                     <td>{formatDate(domain.lastChangedAt)}</td>
+                                    <td>
+                                        <button
+                                            class="btn btn-ghost btn-xs delete-btn"
+                                            data-domain-id={domain.id}
+                                            data-domain-name={domain.name}
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colspan="4" class="text-center py-8">
+                                <td colspan="5" class="text-center py-8">
                                     No domains found or API is unavailable.
                                 </td>
                             </tr>
@@ -246,6 +256,25 @@ function formatDate(dateString: string) {
                 </tbody>
             </table>
         </div>
+
+        <dialog id="delete_domain_modal" class="modal">
+            <div class="modal-box">
+                <h3 class="font-bold text-lg">Delete Domain</h3>
+                <p class="py-4">
+                    Are you sure you want to delete <strong
+                        id="deleteDomainName"></strong>? This action cannot be
+                    undone.
+                </p>
+                <div class="modal-action">
+                    <button id="confirmDeleteBtn" class="btn btn-warning"
+                        >Delete</button
+                    >
+                    <form method="dialog">
+                        <button class="btn">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </dialog>
     </main>
 </Layout>
 
@@ -325,10 +354,57 @@ function formatDate(dateString: string) {
         statusFilter.addEventListener("change", filterDomains);
     }
 
+    function initDeleteDomain() {
+        const deleteButtons = document.querySelectorAll(".delete-btn");
+        const deleteModal = document.getElementById("delete_domain_modal");
+        const confirmBtn = document.getElementById("confirmDeleteBtn");
+        const domainNameEl = document.getElementById("deleteDomainName");
+
+        if (!deleteModal || !confirmBtn || !domainNameEl) return;
+
+        let domainIdToDelete = null;
+
+        deleteButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                domainIdToDelete = button.dataset.domainId;
+                domainNameEl.textContent = button.dataset.domainName;
+                deleteModal.showModal();
+            });
+        });
+
+        confirmBtn.addEventListener("click", async () => {
+            if (!domainIdToDelete) return;
+
+            try {
+                const response = await fetch(
+                    `${import.meta.env.PUBLIC_API_BASE_URL}/api/domains/${domainIdToDelete}`,
+                    {
+                        method: "DELETE",
+                    },
+                );
+
+                if (response.ok) {
+                    deleteModal.close();
+                    location.reload();
+                } else {
+                    const errorData = await response.json();
+                    alert(
+                        `Error: ${errorData.message || "Failed to delete domain"}`,
+                    );
+                }
+            } catch (error) {
+                console.error("Failed to delete domain:", error);
+                alert("An error occurred while deleting the domain.");
+            }
+        });
+    }
+
     document.addEventListener("astro:page-load", () => {
         initAddDomainForm();
         initFilter();
+        initDeleteDomain();
     });
     initAddDomainForm();
     initFilter();
+    initDeleteDomain();
 </script>

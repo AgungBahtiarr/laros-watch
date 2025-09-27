@@ -15,7 +15,7 @@ This document outlines the development rules, conventions, and best practices fo
 
 - **Consistency is Key:** Before writing new code, always look at existing files in the project to understand and follow the established coding style, naming conventions, and architectural patterns.
 - **UI Components:** This project uses [DaisyUI](https://daisyui.com/). Always prioritize using existing DaisyUI components (`btn`, `card`, `badge`, etc.) for new UI elements to maintain visual consistency.
-- **Custom Styling:** All custom theming is defined in `src/assets/app..css`. Do not add one-off CSS styles directly to components. Instead, leverage the existing theme colors (`primary`, `secondary`, `base-100`, etc.) and utility classes from Tailwind CSS.
+- **Custom Styling:** All custom theming is defined in `src/assets/app..css` and dont edit `src/assets/app..css`. Do not add one-off CSS styles directly to components. Instead, leverage the existing theme colors (`primary`, `secondary`, `base-100`, etc.) and utility classes from Tailwind CSS.
 - **Formatting:** All code should be formatted automatically. It is recommended to use a tool like Prettier integrated into your code editor to ensure consistent formatting on save.
 - **Naming:**
     - Use `camelCase` for variables and functions (e.g., `let nodeData;`).
@@ -65,7 +65,7 @@ The basic format is:
 - **Example:**
   ```
   feat: Add real-time status updates via SSE
-  
+
   Integrates a Server-Sent Events client to connect to the
   /api/nodes/status/events endpoint. The UI now updates automatically
   when node information changes on the backend.
