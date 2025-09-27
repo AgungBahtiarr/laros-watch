@@ -1,0 +1,60 @@
+---
+---
+
+<!-- Search and Filter Controls -->
+<div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+    <div class="form-control w-full md:w-auto md:flex-grow">
+        <div class="relative">
+            <input type="text" id="searchInput" placeholder="Search by name..." class="input input-bordered w-full pr-10" />
+            <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/40">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+            </span>
+        </div>
+    </div>
+    <div class="form-control w-full md:w-auto">
+        <select id="statusFilter" class="select select-bordered">
+            <option value="all">All Statuses</option>
+            <option value="online">Online</option>
+            <option value="offline">Offline</option>
+        </select>
+    </div>
+</div>
+
+<script>
+    function initFilter() {
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const nodesContainer = document.getElementById('nodes-container');
+
+        if (!searchInput || !statusFilter || !nodesContainer) return;
+
+        function filterNodes() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filterValue = statusFilter.value;
+
+            for (const card of nodesContainer.children) {
+                if (card.dataset.name) { // Make sure it's a node card
+                    const nodeName = card.dataset.name.toLowerCase();
+                    const nodeStatus = card.dataset.status;
+
+                    const searchMatch = nodeName.includes(searchTerm);
+                    const filterMatch = filterValue === 'all' || filterValue === nodeStatus;
+
+                    if (searchMatch && filterMatch) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                }
+            }
+        }
+
+        searchInput.addEventListener('input', filterNodes);
+        statusFilter.addEventListener('change', filterNodes);
+    }
+
+    document.addEventListener("astro:page-load", initFilter);
+    initFilter(); // Initial call for non-Astro navigation
+</script>

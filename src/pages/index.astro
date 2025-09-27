@@ -1,16 +1,144 @@
 ---
+import Layout from "../layouts/Layout.astro";
+import type { Node } from "../types";
+import SummaryStats from "../components/SummaryStats.astro";
+import FilterControls from "../components/FilterControls.astro";
+import NodeCard from "../components/NodeCard.astro";
 
+let nodes: Node[] = [];
+try {
+    const response = await fetch(
+        `${import.meta.env.PUBLIC_API_BASE_URL}/api/nodes`,
+    );
+    if (response.ok) {
+        nodes = await response.json();
+    }
+} catch (error) {
+    console.error("Failed to fetch nodes:", error);
+}
+
+const totalNodes = nodes.length;
+const onlineNodes = nodes.filter((node) => node.status).length;
+const offlineNodes = totalNodes - onlineNodes;
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout title="Device Nodes">
+    <main class="container mx-auto p-4 md:p-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-base-content">Device Nodes</h1>
+            <p class="text-base-content/60">
+                A real-time overview of network devices.
+            </p>
+        </header>
+
+        <SummaryStats
+            totalNodes={totalNodes}
+            onlineNodes={onlineNodes}
+            offlineNodes={offlineNodes}
+        />
+
+        <FilterControls />
+
+        <div
+            id="nodes-container"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        >
+            {
+                nodes.length > 0 ? (
+                    nodes.map((node) => <NodeCard node={node} />)
+                ) : (
+                    <div class="col-span-full text-center py-16">
+                        <p>No nodes found or API is unavailable.</p>
+                    </div>
+                )
+            }
+        </div>
+    </main>
+
+    <script define:vars={{ apiUrl: import.meta.env.PUBLIC_API_BASE_URL }}>
+        let eventSource;
+
+        function initSSE() {
+            if (
+                eventSource &&
+                (eventSource.readyState === 0 || eventSource.readyState === 1)
+            ) {
+                return;
+            }
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            console.log("Initializing new SSE connection from Astro page...");
+            try {
+                eventSource = new EventSource(
+                    `${apiUrl}/api/nodes/status/events`,
+                );
+
+                eventSource.onopen = () => {
+                    console.log("SSE Connection Opened from Astro page!");
+                };
+
+                eventSource.addEventListener("notification", (event) => {
+                    console.log("SSE notification received:", event.data);
+                    try {
+                        const eventData = JSON.parse(event.data);
+                        const nodeChanges = eventData.nodeChanges;
+
+                        if (nodeChanges && Array.isArray(nodeChanges)) {
+                            nodeChanges.forEach((changedNode) => {
+                                const nodeId = changedNode.id;
+                                if (!nodeId) return;
+
+                                const statusBadge = document.getElementById(
+                                    `node-status-badge-${nodeId}`,
+                                );
+                                const cpuProgress = document.getElementById(
+                                    `node-cpu-progress-${nodeId}`,
+                                );
+                                const cpuText = document.getElementById(
+                                    `node-cpu-text-${nodeId}`,
+                                );
+                                const ramProgress = document.getElementById(
+                                    `node-ram-progress-${nodeId}`,
+                                );
+                                const ramText = document.getElementById(
+                                    `node-ram-text-${nodeId}`,
+                                );
+
+                                if (statusBadge) {
+                                    statusBadge.textContent = changedNode.status
+                                        ? "Online"
+                                        : "Offline";
+                                    statusBadge.className = `badge ${changedNode.status ? "badge-success" : "badge-error"} badge-outline text-xs`;
+                                }
+                                if (cpuProgress && cpuText) {
+                                    cpuProgress.value = changedNode.cpuUsage;
+                                    cpuText.textContent = `${changedNode.cpuUsage}%`;
+                                }
+                                if (ramProgress && ramText) {
+                                    ramProgress.value = changedNode.ramUsage;
+                                    ramText.textContent = `${changedNode.ramUsage}%`;
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error(
+                            "Failed to parse SSE data or update UI:",
+                            error,
+                        );
+                    }
+                });
+
+                eventSource.onerror = (error) => {
+                    console.error("SSE connection error on Astro page:", error);
+                };
+            } catch (e) {
+                console.error("Error creating EventSource on Astro page:", e);
+            }
+        }
+
+        document.addEventListener("astro:page-load", initSSE);
+        initSSE();
+    </script>
+</Layout>

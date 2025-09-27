@@ -42,9 +42,9 @@ interface Node {
 const { id } = Astro.params;
 let node: Node | null = null;
 try {
-    // In SSR mode, this fetch runs on every request.
-    // A more optimal API would be `/api/nodes/${id}`
-    const response = await fetch(`http://localhost:3000/api/nodes`);
+    const response = await fetch(
+        `${import.meta.env.PUBLIC_API_BASE_URL}/api/nodes`,
+    );
     if (response.ok) {
         const nodes: Node[] = await response.json();
         node = nodes.find((n) => n.id.toString() === id) || null;
@@ -55,109 +55,145 @@ try {
 ---
 
 <Layout title={node ? `Node Details: ${node.name}` : "Node Not Found"}>
-    <main class="container mx-auto p-4">
+    <main class="container mx-auto p-4 md:p-8">
         {
             node ? (
                 <>
-                    <div class="prose mb-8">
-                        <h1>{node.name}</h1>
-                        <p>Details for device node.</p>
-                    </div>
+                    <header class="mb-8">
+                        <a href="/" class="btn btn-ghost btn-sm mb-4">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                class="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                                />
+                            </svg>
+                            Back to Nodes
+                        </a>
+                        <div class="flex items-center gap-4">
+                            <h1 class="text-3xl font-bold text-base-content">
+                                {node.name}
+                            </h1>
+                            <div
+                                id={`node-status-badge-${node.id}`}
+                                class={`badge ${node.status ? "badge-success" : "badge-error"} badge-lg gap-2`}
+                            >
+                                <span
+                                    class={`animate-pulse inline-block h-2 w-2 rounded-full ${node.status ? "bg-success-content" : "bg-error-content"}`}
+                                />
+                                {node.status ? "Online" : "Offline"}
+                            </div>
+                        </div>
+                        <p class="text-base-content/60">{node.popLocation}</p>
+                    </header>
 
-                    <div class="card bg-base-100 border border-base-200 mb-8">
-                        <div class="card-body">
-                            <h2 class="card-title">Node Information</h2>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <p>
-                                    <strong>ID:</strong> {node.id}
-                                </p>
-                                <p>
-                                    <strong>Device ID:</strong> {node.deviceId}
-                                </p>
-                                <p>
-                                    <strong>POP Location:</strong>{" "}
-                                    {node.popLocation}
-                                </p>
-                                <p>
-                                    <strong>IP Management:</strong>{" "}
-                                    {node.ipMgmt}
-                                </p>
-                                <p>
-                                    <strong>Operating System:</strong> {node.os}
-                                </p>
-                                <p>
-                                    <strong>Status:</strong>
-                                    <span
-                                        id={`node-status-badge-${node.id}`}
-                                        class={`badge ${node.status ? "badge-success" : "badge-error"}`}
-                                    >
-                                        {node.status ? "Online" : "Offline"}
+                    <div class="card bg-base-100 border border-base-300 mb-8">
+                        <div class="card-body p-6">
+                            <h2 class="card-title text-lg font-semibold">
+                                Node Information
+                            </h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 mt-2 text-sm">
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-base-content/60">
+                                        Device ID
                                     </span>
-                                </p>
-                                <p>
-                                    <strong>CPU Usage:</strong>{" "}
-                                    <span id={`node-cpu-text-${node.id}`}>
+                                    <span class="font-medium">
+                                        {node.deviceId}
+                                    </span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-base-content/60">
+                                        IP Management
+                                    </span>
+                                    <span class="font-medium">
+                                        {node.ipMgmt}
+                                    </span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-base-content/60">
+                                        Operating System
+                                    </span>
+                                    <span class="font-medium">{node.os}</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-base-content/60">
+                                        CPU Usage
+                                    </span>
+                                    <span
+                                        id={`node-cpu-text-${node.id}`}
+                                        class="font-medium"
+                                    >
                                         {node.cpuUsage}%
                                     </span>
-                                </p>
-                                <p>
-                                    <strong>RAM Usage:</strong>{" "}
-                                    <span id={`node-ram-text-${node.id}`}>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-base-content/60">
+                                        RAM Usage
+                                    </span>
+                                    <span
+                                        id={`node-ram-text-${node.id}`}
+                                        class="font-medium"
+                                    >
                                         {node.ramUsage}%
                                     </span>
-                                </p>
-                                <p>
-                                    <strong>Coordinates:</strong> {node.lat},{" "}
-                                    {node.lng}
-                                </p>
-                                <p>
-                                    <strong>Created At:</strong>{" "}
-                                    {new Date(node.createdAt).toLocaleString()}
-                                </p>
-                                <p>
-                                    <strong>Last Updated:</strong>{" "}
-                                    {new Date(node.updatedAt).toLocaleString()}
-                                </p>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-base-content/60">
+                                        Coordinates
+                                    </span>
+                                    <span class="font-medium">
+                                        {node.lat}, {node.lng}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="prose mb-8">
-                        <h2>Interfaces</h2>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="table table-zebra w-full">
-                            <thead>
+                    <h2 class="text-xl font-bold text-base-content mb-4">
+                        Interfaces
+                    </h2>
+                    <div class="overflow-x-auto border border-base-300 rounded-lg">
+                        <table class="table w-full">
+                            <thead class="bg-base-200/30">
                                 <tr>
-                                    <th>Name</th>
+                                    <th class="w-1/4">Name</th>
                                     <th>Description</th>
                                     <th>Type</th>
                                     <th>MAC Address</th>
                                     <th>Status</th>
-                                    <th>Optical Tx/Rx</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {node.interfaces.map((iface) => (
-                                    <tr id={`interface-row-${iface.id}`}>
-                                        <td>{iface.ifName}</td>
+                                    <tr
+                                        id={`interface-row-${iface.id}`}
+                                        class="hover:bg-base-200/20"
+                                    >
+                                        <td class="font-medium">
+                                            {iface.ifName}
+                                        </td>
                                         <td>{iface.ifDescr}</td>
                                         <td>{iface.ifType}</td>
                                         <td>{iface.ifPhysAddress}</td>
                                         <td>
                                             <span
                                                 id={`interface-status-badge-${iface.id}`}
-                                                class={`badge ${iface.ifOperStatus === 1 ? "badge-success" : "badge-warning"}`}
+                                                class={`badge badge-sm ${iface.ifOperStatus === 1 ? "badge-success" : "badge-error"} gap-1.5`}
                                             >
+                                                <span
+                                                    class={`animate-pulse inline-block h-1.5 w-1.5 rounded-full ${iface.ifOperStatus === 1 ? "bg-success-content" : "bg-error-content"}`}
+                                                />
                                                 {iface.ifOperStatus === 1
                                                     ? "Up"
                                                     : "Down"}
                                             </span>
-                                        </td>
-                                        <td>
-                                            {iface.opticalTx && iface.opticalRx
-                                                ? `${iface.opticalTx} / ${iface.opticalRx}`
-                                                : "N/A"}
                                         </td>
                                     </tr>
                                 ))}
@@ -166,8 +202,8 @@ try {
                     </div>
                 </>
             ) : (
-                <div class="text-center">
-                    <h1 class="text-2xl">Node not found</h1>
+                <div class="text-center py-16">
+                    <h1 class="text-2xl font-bold">Node not found</h1>
                     <a href="/nodes" class="btn btn-primary mt-4">
                         Back to Nodes List
                     </a>
@@ -175,7 +211,12 @@ try {
             )
         }
     </main>
-    <script define:vars={{ nodeId: node?.id }}>
+    <script
+        define:vars={{
+            nodeId: node?.id,
+            apiUrl: import.meta.env.PUBLIC_API_BASE_URL,
+        }}
+    >
         let eventSource;
 
         function initSSE() {
@@ -194,7 +235,7 @@ try {
             console.log("Initializing SSE on detail page...");
             try {
                 eventSource = new EventSource(
-                    "http://localhost:3000/api/nodes/status/events",
+                    `${apiUrl}/api/nodes/status/events`,
                 );
 
                 eventSource.onopen = () => {
@@ -216,7 +257,7 @@ try {
                         statusBadge.textContent = nodeData.status
                             ? "Online"
                             : "Offline";
-                        statusBadge.className = `badge ${nodeData.status ? "badge-success" : "badge-error"}`;
+                        statusBadge.className = `badge ${nodeData.status ? "badge-success" : "badge-error"} badge-lg badge-outline`;
                     }
                     if (cpuText) cpuText.textContent = `${nodeData.cpuUsage}%`;
                     if (ramText) ramText.textContent = `${nodeData.ramUsage}%`;
@@ -229,7 +270,7 @@ try {
                     if (statusBadge) {
                         statusBadge.textContent =
                             ifaceData.ifOperStatus === 1 ? "Up" : "Down";
-                        statusBadge.className = `badge ${ifaceData.ifOperStatus === 1 ? "badge-success" : "badge-warning"}`;
+                        statusBadge.className = `badge badge-sm ${ifaceData.ifOperStatus === 1 ? "badge-success" : "badge-warning"} badge-outline`;
                     }
                 };
 

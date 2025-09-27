@@ -1,0 +1,91 @@
+---
+
+---
+
+<header
+    class="bg-base-100/80 backdrop-blur-sm sticky top-0 z-40 w-full border-b border-base-300"
+>
+    <div class="container mx-auto">
+        <div class="navbar">
+            <div class="navbar-start">
+                <a href="/" class="btn btn-ghost normal-case text-xl">
+                    Laros Watch
+                </a>
+            </div>
+            <div class="navbar-center hidden lg:flex">
+                <ul class="menu menu-horizontal px-1">
+                    <li><a href="/">Nodes</a></li>
+                </ul>
+            </div>
+            <div class="navbar-end">
+                <label class="flex cursor-pointer gap-2 items-center">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><circle cx="12" cy="12" r="5"></circle><path
+                            d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"
+                        ></path></svg
+                    >
+                    <input
+                        type="checkbox"
+                        value="monodark"
+                        id="theme-controller"
+                        class="toggle theme-controller"
+                    />
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path
+                            d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+                        ></path></svg
+                    >
+                </label>
+                <a
+                    href="https://github.com/laros-id/laros-watch"
+                    target="_blank"
+                    class="btn btn-ghost"
+                >
+                    Github
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<script is:inline>
+    const themeController = document.getElementById("theme-controller");
+
+    const applyTheme = (theme) => {
+        document.documentElement.setAttribute("data-theme", theme);
+        if (themeController) {
+            themeController.checked = theme === "monodark";
+        }
+    };
+
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else {
+        applyTheme("monolight");
+    }
+
+    themeController.addEventListener("change", (e) => {
+        const newTheme = e.target.checked ? "monodark" : "monolight";
+        localStorage.setItem("theme", newTheme);
+        document.documentElement.setAttribute("data-theme", newTheme);
+    });
+</script>
