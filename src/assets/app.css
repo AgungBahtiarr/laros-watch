@@ -5,6 +5,12 @@
         dark --prefersdark;
 }
 
+html {
+    font-family: system-ui, sans-serif;
+    background-size: 224px;
+    overflow-y: scroll;
+}
+
 @plugin "daisyui/theme" {
     name: "monolight";
     default: true;

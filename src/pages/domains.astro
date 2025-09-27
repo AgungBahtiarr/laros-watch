@@ -1,0 +1,334 @@
+---
+import Layout from "../layouts/Layout.astro";
+import type { Domain } from "../types";
+
+let domains: Domain[] = [];
+try {
+    const response = await fetch(
+        `${import.meta.env.PUBLIC_API_BASE_URL}/api/domains`,
+    );
+    if (response.ok) {
+        domains = await response.json();
+    }
+} catch (error) {
+    console.error("Failed to fetch domains:", error);
+}
+
+const totalDomains = domains.length;
+const okDomains = domains.filter((d) => d.status === "ok").length;
+const errorDomains = totalDomains - okDomains;
+
+function formatDate(dateString: string) {
+    return new Date(dateString).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
+}
+---
+
+<Layout title="Domains">
+    <main class="container mx-auto p-4 md:p-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-base-content">
+                Monitored Domains
+            </h1>
+            <p class="text-base-content/60">
+                A list of registered domains and their status.
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="card bg-base-100 border border-base-300">
+                <div class="stat p-5">
+                    <div class="stat-figure text-primary">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="w-8 h-8"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"
+                            ></path>
+                        </svg>
+                    </div>
+                    <div class="stat-title">Total Domains</div>
+                    <div class="stat-value">{totalDomains}</div>
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-300">
+                <div class="stat p-5">
+                    <div class="stat-figure text-success">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="w-8 h-8"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            ></path>
+                        </svg>
+                    </div>
+                    <div class="stat-title">OK</div>
+                    <div class="stat-value">{okDomains}</div>
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-300">
+                <div class="stat p-5">
+                    <div class="stat-figure text-error">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="w-8 h-8"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            ></path>
+                        </svg>
+                    </div>
+                    <div class="stat-title">Error</div>
+                    <div class="stat-value">{errorDomains}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search, Filter, and Add Button -->
+        <div
+            class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6"
+        >
+            <div class="form-control w-full md:w-auto md:flex-grow">
+                <div class="relative">
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Search by name..."
+                        class="input input-bordered w-full pr-10"
+                    />
+                    <span
+                        class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="w-5 h-5 text-base-content/40"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                            ></path>
+                        </svg>
+                    </span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="form-control w-full md:w-auto">
+                    <select id="statusFilter" class="select select-bordered">
+                        <option value="all">All Statuses</option>
+                        <option value="ok">OK</option>
+                        <option value="error">Error</option>
+                    </select>
+                </div>
+                <button
+                    class="btn btn-outline btn-circle"
+                    onclick="add_domain_modal.showModal()"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        ><path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg
+                    >
+                </button>
+                <dialog
+                    id="add_domain_modal"
+                    class="modal modal-bottom sm:modal-middle"
+                >
+                    <div class="modal-box">
+                        <h3 class="font-bold text-lg">Add New Domain</h3>
+                        <form id="addDomainForm" class="py-4">
+                            <div class="form-control w-full">
+                                <label class="label" for="domainName">
+                                    <span class="label-text">Domain Name</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="domainName"
+                                    name="name"
+                                    placeholder="example.com"
+                                    class="input input-bordered w-full"
+                                    required
+                                />
+                            </div>
+                        </form>
+                        <div class="modal-action">
+                            <button
+                                type="submit"
+                                form="addDomainForm"
+                                class="btn btn-primary">Add Domain</button
+                            >
+                            <form method="dialog">
+                                <button class="btn">Close</button>
+                            </form>
+                        </div>
+                    </div>
+                </dialog>
+            </div>
+        </div>
+        <div
+            class="overflow-x-auto bg-base-100 border border-base-300 rounded-lg"
+        >
+            <table class="table w-full">
+                <thead>
+                    <tr>
+                        <th>Domain Name</th>
+                        <th>Status</th>
+                        <th>Expires At</th>
+                        <th>Last Changed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {
+                        domains.length > 0 ? (
+                            domains.map((domain) => (
+                                <tr
+                                    data-name={domain.name}
+                                    data-status={domain.status}
+                                >
+                                    <td>
+                                        <span class="font-semibold">
+                                            {domain.name}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span
+                                            class={`badge ${domain.status === "ok" ? "badge-success" : "badge-error"}`}
+                                        >
+                                            {domain.status}
+                                        </span>
+                                    </td>
+                                    <td>{formatDate(domain.expiresAt)}</td>
+                                    <td>{formatDate(domain.lastChangedAt)}</td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colspan="4" class="text-center py-8">
+                                    No domains found or API is unavailable.
+                                </td>
+                            </tr>
+                        )
+                    }
+                </tbody>
+            </table>
+        </div>
+    </main>
+</Layout>
+
+<script>
+    function initAddDomainForm() {
+        const form = document.getElementById("addDomainForm");
+        if (!form) return;
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const domainNameInput = document.getElementById("domainName");
+            const domainName = domainNameInput.value;
+
+            if (!domainName) {
+                alert("Please enter a domain name.");
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `${import.meta.env.PUBLIC_API_BASE_URL}/api/domains`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ name: domainName }),
+                    },
+                );
+
+                if (response.ok) {
+                    add_domain_modal.close();
+                    location.reload();
+                } else {
+                    const errorData = await response.json();
+                    alert(
+                        `Error: ${errorData.message || "Failed to add domain"}`,
+                    );
+                }
+            } catch (error) {
+                console.error("Failed to submit domain:", error);
+                alert("An error occurred while adding the domain.");
+            }
+        });
+    }
+
+    function initFilter() {
+        const searchInput = document.getElementById("searchInput");
+        const statusFilter = document.getElementById("statusFilter");
+        const tableBody = document.querySelector("table tbody");
+
+        if (!searchInput || !statusFilter || !tableBody) return;
+
+        function filterDomains() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filterValue = statusFilter.value;
+
+            for (const row of tableBody.children) {
+                if (row.dataset.name) {
+                    const domainName = row.dataset.name.toLowerCase();
+                    const domainStatus = row.dataset.status;
+
+                    const searchMatch = domainName.includes(searchTerm);
+                    const filterMatch =
+                        filterValue === "all" || filterValue === domainStatus;
+
+                    if (searchMatch && filterMatch) {
+                        row.style.display = "";
+                    } else {
+                        row.style.display = "none";
+                    }
+                }
+            }
+        }
+
+        searchInput.addEventListener("input", filterDomains);
+        statusFilter.addEventListener("change", filterDomains);
+    }
+
+    document.addEventListener("astro:page-load", () => {
+        initAddDomainForm();
+        initFilter();
+    });
+    initAddDomainForm();
+    initFilter();
+</script>
