@@ -87,6 +87,9 @@ const routes = routeResults
                                         "Unknown"}
                                 </td>
                                 <td class="flex gap-2">
+                                    <button class="btn btn-sm btn-outline btn-success btn-view">
+                                        View
+                                    </button>
                                     <button class="btn btn-sm btn-outline btn-info btn-edit">
                                         Edit
                                     </button>
@@ -208,7 +211,21 @@ const routes = routeResults
             apiBaseUrl,
         }}
     >
-        // Map Initialization
+        // --- Helper Functions ---
+        function stringToColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            let color = "#";
+            for (let i = 0; i < 3; i++) {
+                const value = (hash >> (i * 8)) & 0xff;
+                color += ("00" + value.toString(16)).substr(-2);
+            }
+            return color;
+        }
+
+        // --- Map Initialization ---
         const map = L.map("map").setView([-2.5, 118], 5); // Default view of Indonesia
         if (nodesWithLocation.length > 0) {
             map.setView(
@@ -233,9 +250,12 @@ const routes = routeResults
                         (c) => c.id === routeData.connectionId,
                     );
                     const popupContent = `<b>${conn?.description || "Connection"}</b><br>Distance: ${distanceInKm} km`;
+                    const color = stringToColor(
+                        routeData.connectionId.toString(),
+                    );
 
                     const routeLayer = L.geoJSON(routeData.geometry, {
-                        style: { color: "blue", weight: 3 },
+                        style: { color: color, weight: 3, opacity: 0.8 },
                         onEachFeature: function (feature, layer) {
                             layer.bindPopup(popupContent);
                         },
@@ -245,7 +265,7 @@ const routes = routeResults
             });
         }
 
-        // Modal and Form Logic
+        // --- Modal and Form Logic ---
         const nodeMap = new Map(nodes.map((node) => [node.id, node]));
         const connectionMap = new Map(
             connections.map((conn) => [conn.id, conn]),
@@ -343,6 +363,24 @@ const routes = routeResults
                 console.error(error);
                 alert("Error: " + error.message);
             }
+        });
+
+        // --- Table Button Logic ---
+        // View Logic
+        document.querySelectorAll(".btn-view").forEach((button) => {
+            button.addEventListener("click", (e) => {
+                const row = e.target.closest("tr");
+                const connectionId = row.dataset.connectionId;
+                const routeLayer = routeLayers[connectionId];
+                if (routeLayer) {
+                    const bounds = routeLayer.getBounds();
+                    map.fitBounds(bounds.pad(0.1));
+                    // We need to open the popup on the actual inner layer, not the GeoJSON group
+                    routeLayer.eachLayer((layer) => {
+                        layer.openPopup();
+                    });
+                }
+            });
         });
 
         // Delete Logic
