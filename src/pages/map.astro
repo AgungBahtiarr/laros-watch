@@ -236,6 +236,9 @@ const routes = routeResults
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: "&copy; OpenStreetMap",
         }).addTo(map);
+        L.tileLayer("", {
+            attribution: "PT. Lare Osing Ndo.",
+        }).addTo(map);
         nodesWithLocation.forEach((node) =>
             L.marker([node.lat, node.lng])
                 .addTo(map)
