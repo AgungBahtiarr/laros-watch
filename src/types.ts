@@ -43,3 +43,24 @@ export interface Domain {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CustomRoute {
+  id: number;
+  connectionId: number;
+  coordinates: [number, number][];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Connection {
+  id: number;
+  deviceAId: number;
+  portAId: number;
+  deviceBId: number;
+  portBId: number;
+  odpPath: number[];
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  customRoute: CustomRoute | null;
+}

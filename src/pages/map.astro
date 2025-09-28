@@ -1,0 +1,393 @@
+---
+import Layout from "../layouts/Layout.astro";
+import type { Node, Connection } from "../types";
+
+const apiBaseUrl =
+    import.meta.env.PUBLIC_API_BASE_URL || "http://localhost:3000";
+const osrmApiUrl = import.meta.env.PUBLIC_OSRM_API_URL;
+
+// Fetch nodes and connections
+const [nodesResponse, connectionsResponse] = await Promise.all([
+    fetch(`${apiBaseUrl}/api/nodes`),
+    fetch(`${apiBaseUrl}/api/nodes/connections`),
+]);
+
+const nodes: Node[] = await nodesResponse.json();
+const connections: Connection[] = await connectionsResponse.json();
+
+const nodesWithLocation = nodes.filter((node) => node.lat && node.lng);
+const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+
+// Prepare route promises
+const routePromises = connections.map((conn) => {
+    const nodeA = nodeMap.get(conn.deviceAId);
+    const nodeB = nodeMap.get(conn.deviceBId);
+
+    if (nodeA && nodeB && osrmApiUrl) {
+        const url = `${osrmApiUrl}/${nodeA.lng},${nodeA.lat};${nodeB.lng},${nodeB.lat}?overview=full&geometries=geojson`;
+        return fetch(url)
+            .then((res) => res.json())
+            .catch((error) => {
+                console.error("OSRM API Fetch Error for URL:", url, error);
+                return null;
+            });
+    }
+    return Promise.resolve(null);
+});
+
+const routeResults = await Promise.all(routePromises);
+
+const routes = routeResults
+    .map((result, index) => {
+        if (result && result.routes && result.routes.length > 0) {
+            return {
+                geometry: result.routes[0].geometry,
+                distance: result.routes[0].distance, // in meters
+                connectionId: connections[index].id,
+            };
+        }
+        return null;
+    })
+    .filter(Boolean);
+---
+
+<Layout title="Nodes Map">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6">Nodes Map & Connections</h1>
+        <div id="map" class="h-[600px] rounded-lg shadow-lg mb-8"></div>
+
+        <!-- Connections Table -->
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Connections</h2>
+            <label for="add-connection-modal" class="btn btn-primary"
+                >Add Connection</label
+            >
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table w-full">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Device A</th>
+                        <th>Device B</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {
+                        connections.map((conn) => (
+                            <tr data-connection-id={conn.id}>
+                                <td>{conn.description}</td>
+                                <td>
+                                    {nodeMap.get(conn.deviceAId)?.name ||
+                                        "Unknown"}
+                                </td>
+                                <td>
+                                    {nodeMap.get(conn.deviceBId)?.name ||
+                                        "Unknown"}
+                                </td>
+                                <td class="flex gap-2">
+                                    <button class="btn btn-sm btn-outline btn-info btn-edit">
+                                        Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-outline btn-error btn-delete">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <input type="checkbox" id="add-connection-modal" class="modal-toggle" />
+    <div class="modal">
+        <div class="modal-box w-11/12 max-w-2xl">
+            <h3 class="font-bold text-lg" id="modal-title">
+                Add New Connection
+            </h3>
+            <form id="connection-form">
+                <input type="hidden" id="connection-id" name="connectionId" />
+                <div class="form-control">
+                    <label class="label" for="description">Description</label>
+                    <input
+                        type="text"
+                        id="description"
+                        name="description"
+                        class="input input-bordered"
+                        required
+                    />
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div class="form-control">
+                        <label class="label" for="deviceAId">Device A</label>
+                        <select
+                            id="deviceAId"
+                            name="deviceAId"
+                            class="select select-bordered"
+                            required
+                        >
+                            <option disabled selected>Select Device</option>
+                            {
+                                nodes.map((node) => (
+                                    <option value={node.id}>{node.name}</option>
+                                ))
+                            }
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="portAId">Port A</label>
+                        <select
+                            id="portAId"
+                            name="portAId"
+                            class="select select-bordered"
+                            required
+                            disabled></select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="deviceBId">Device B</label>
+                        <select
+                            id="deviceBId"
+                            name="deviceBId"
+                            class="select select-bordered"
+                            required
+                        >
+                            <option disabled selected>Select Device</option>
+                            {
+                                nodes.map((node) => (
+                                    <option value={node.id}>{node.name}</option>
+                                ))
+                            }
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="portBId">Port B</label>
+                        <select
+                            id="portBId"
+                            name="portBId"
+                            class="select select-bordered"
+                            required
+                            disabled></select>
+                    </div>
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label" for="odpPath"
+                        >ODP Path (comma-separated IDs)</label
+                    >
+                    <input
+                        type="text"
+                        id="odpPath"
+                        name="odpPath"
+                        class="input input-bordered"
+                    />
+                </div>
+                <div class="modal-action">
+                    <label for="add-connection-modal" class="btn">Cancel</label>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    ></script>
+
+    <script
+        define:vars={{
+            nodes,
+            connections,
+            nodesWithLocation,
+            routes,
+            apiBaseUrl,
+        }}
+    >
+        // Map Initialization
+        const map = L.map("map").setView([-2.5, 118], 5); // Default view of Indonesia
+        if (nodesWithLocation.length > 0) {
+            map.setView(
+                [nodesWithLocation[0].lat, nodesWithLocation[0].lng],
+                8,
+            );
+        }
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; OpenStreetMap",
+        }).addTo(map);
+        nodesWithLocation.forEach((node) =>
+            L.marker([node.lat, node.lng])
+                .addTo(map)
+                .bindPopup(`<b>${node.name}</b>`),
+        );
+        const routeLayers = {};
+        if (routes && routes.length > 0) {
+            routes.forEach((routeData) => {
+                if (routeData && routeData.geometry) {
+                    const distanceInKm = (routeData.distance / 1000).toFixed(2);
+                    const conn = connections.find(
+                        (c) => c.id === routeData.connectionId,
+                    );
+                    const popupContent = `<b>${conn?.description || "Connection"}</b><br>Distance: ${distanceInKm} km`;
+
+                    const routeLayer = L.geoJSON(routeData.geometry, {
+                        style: { color: "blue", weight: 3 },
+                        onEachFeature: function (feature, layer) {
+                            layer.bindPopup(popupContent);
+                        },
+                    }).addTo(map);
+                    routeLayers[routeData.connectionId] = routeLayer;
+                }
+            });
+        }
+
+        // Modal and Form Logic
+        const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+        const connectionMap = new Map(
+            connections.map((conn) => [conn.id, conn]),
+        );
+        const form = document.getElementById("connection-form");
+        const modalToggle = document.getElementById("add-connection-modal");
+        const modalTitle = document.getElementById("modal-title");
+        const connectionIdInput = document.getElementById("connection-id");
+        const descriptionInput = document.getElementById("description");
+        const deviceASelect = document.getElementById("deviceAId");
+        const portASelect = document.getElementById("portAId");
+        const deviceBSelect = document.getElementById("deviceBId");
+        const portBSelect = document.getElementById("portBId");
+        const odpPathInput = document.getElementById("odpPath");
+
+        function populatePorts(deviceSelect, portSelect, selectedPortId) {
+            const selectedNodeId = deviceSelect.value;
+            portSelect.innerHTML = "";
+            portSelect.disabled = true;
+            if (!selectedNodeId) return;
+
+            const node = nodeMap.get(parseInt(selectedNodeId));
+            if (node && node.interfaces) {
+                portSelect.disabled = false;
+                node.interfaces.forEach((iface) => {
+                    const option = document.createElement("option");
+                    option.value = iface.id;
+                    option.textContent = `${iface.ifName} (${iface.ifDescr})`;
+                    if (iface.id === selectedPortId) {
+                        option.selected = true;
+                    }
+                    portSelect.appendChild(option);
+                });
+            }
+        }
+
+        function resetForm() {
+            form.reset();
+            connectionIdInput.value = "";
+            modalTitle.textContent = "Add New Connection";
+            portASelect.innerHTML = "";
+            portASelect.disabled = true;
+            portBSelect.innerHTML = "";
+            portBSelect.disabled = true;
+        }
+
+        deviceASelect.addEventListener("change", () =>
+            populatePorts(deviceASelect, portASelect),
+        );
+        deviceBSelect.addEventListener("change", () =>
+            populatePorts(deviceBSelect, portBSelect),
+        );
+        modalToggle.addEventListener("change", () => {
+            if (!modalToggle.checked) {
+                resetForm();
+            }
+        });
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const connectionId = connectionIdInput.value;
+            const isEdit = !!connectionId;
+            const formData = new FormData(form);
+            const data = {
+                deviceAId: parseInt(formData.get("deviceAId")),
+                portAId: parseInt(formData.get("portAId")),
+                deviceBId: parseInt(formData.get("deviceBId")),
+                portBId: parseInt(formData.get("portBId")),
+                description: formData.get("description"),
+                odpPath: formData
+                    .get("odpPath")
+                    .split(",")
+                    .map((s) => parseInt(s.trim()))
+                    .filter((n) => !isNaN(n)),
+            };
+
+            const url = isEdit
+                ? `${apiBaseUrl}/api/nodes/connections/${connectionId}`
+                : `${apiBaseUrl}/api/nodes/connections`;
+            const method = isEdit ? "PUT" : "POST";
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                });
+                if (!response.ok)
+                    throw new Error(
+                        `Failed to ${isEdit ? "update" : "save"} connection`,
+                    );
+                modalToggle.checked = false;
+                location.reload();
+            } catch (error) {
+                console.error(error);
+                alert("Error: " + error.message);
+            }
+        });
+
+        // Delete Logic
+        document.querySelectorAll(".btn-delete").forEach((button) => {
+            button.addEventListener("click", async (e) => {
+                const row = e.target.closest("tr");
+                const connectionId = row.dataset.connectionId;
+                if (
+                    confirm("Are you sure you want to delete this connection?")
+                ) {
+                    try {
+                        const response = await fetch(
+                            `${apiBaseUrl}/api/nodes/connections/${connectionId}`,
+                            { method: "DELETE" },
+                        );
+                        if (!response.ok)
+                            throw new Error("Failed to delete connection");
+                        location.reload();
+                    } catch (error) {
+                        console.error(error);
+                        alert("Error: " + error.message);
+                    }
+                }
+            });
+        });
+
+        // Edit Logic
+        document.querySelectorAll(".btn-edit").forEach((button) => {
+            button.addEventListener("click", (e) => {
+                const row = e.target.closest("tr");
+                const connectionId = parseInt(row.dataset.connectionId);
+                const conn = connectionMap.get(connectionId);
+
+                if (conn) {
+                    modalTitle.textContent = "Edit Connection";
+                    connectionIdInput.value = conn.id;
+                    descriptionInput.value = conn.description;
+                    deviceASelect.value = conn.deviceAId;
+                    populatePorts(deviceASelect, portASelect, conn.portAId);
+                    deviceBSelect.value = conn.deviceBId;
+                    populatePorts(deviceBSelect, portBSelect, conn.portBId);
+                    odpPathInput.value = conn.odpPath.join(", ");
+                    modalToggle.checked = true;
+                }
+            });
+        });
+    </script>
+</Layout>
