@@ -532,7 +532,7 @@ const routes = routeResults
                     populatePorts(deviceASelect, portASelect, conn.portAId);
                     deviceBSelect.value = conn.deviceBId;
                     populatePorts(deviceBSelect, portBSelect, conn.portBId);
-                    odpPathInput.value = conn.odpPath.join(", ");
+                    odpPathInput.value = conn.odpPath?.join(", ") || "";
                     modalToggle.checked = true;
                 }
             });
