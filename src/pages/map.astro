@@ -244,6 +244,13 @@ const routes = routeResults
                 .addTo(map)
                 .bindPopup(`<b>${node.name}</b>`),
         );
+        let selectedRouteLayer = null;
+        map.on("click", () => {
+            if (selectedRouteLayer) {
+                selectedRouteLayer.setStyle(selectedRouteLayer.originalStyle);
+                selectedRouteLayer = null;
+            }
+        });
         const routeLayers = {};
         if (routes && routes.length > 0) {
             routes.forEach((routeData) => {
@@ -261,6 +268,30 @@ const routes = routeResults
                         style: { color: color, weight: 3, opacity: 0.8 },
                         onEachFeature: function (feature, layer) {
                             layer.bindPopup(popupContent);
+                            const originalStyle = {
+                                color: color,
+                                weight: 3,
+                                opacity: 0.8,
+                            };
+                            layer.originalStyle = originalStyle;
+
+                            layer.on("click", (e) => {
+                                if (selectedRouteLayer) {
+                                    selectedRouteLayer.setStyle(
+                                        selectedRouteLayer.originalStyle,
+                                    );
+                                }
+                                layer.setStyle({
+                                    color: "#FFFF00",
+                                    weight: 5,
+                                    opacity: 1,
+                                });
+                                layer.bringToFront();
+                                selectedRouteLayer = layer;
+                                if (e.originalEvent) {
+                                    L.DomEvent.stopPropagation(e); // prevent map click from firing
+                                }
+                            });
                         },
                     }).addTo(map);
                     routeLayers[routeData.connectionId] = routeLayer;
@@ -380,6 +411,7 @@ const routes = routeResults
                     map.fitBounds(bounds.pad(0.1));
                     // We need to open the popup on the actual inner layer, not the GeoJSON group
                     routeLayer.eachLayer((layer) => {
+                        layer.fire("click");
                         layer.openPopup();
                     });
                 }
