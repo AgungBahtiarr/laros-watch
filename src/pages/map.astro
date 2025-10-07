@@ -96,6 +96,9 @@ const routes = routeResults
                                     <button class="btn btn-sm btn-error btn-delete">
                                         Delete
                                     </button>
+                                    <button class="btn btn-sm btn-warning btn-find-point">
+                                        Find Point
+                                    </button>
                                 </td>
                             </tr>
                         ))
@@ -195,12 +198,50 @@ const routes = routeResults
         </div>
     </div>
 
+    <!-- Find Point Modal -->
+    <input type="checkbox" id="find-point-modal" class="modal-toggle" />
+    <div class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Find Point on Route</h3>
+            <form id="find-point-form">
+                <input type="hidden" id="find-point-connection-id" />
+                <div class="form-control">
+                    <label class="label" for="start-node-select"
+                        >Start From</label
+                    >
+                    <select
+                        id="start-node-select"
+                        class="select select-bordered"
+                    >
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label" for="distance-input"
+                        >Distance (meters)</label
+                    >
+                    <input
+                        type="number"
+                        id="distance-input"
+                        class="input input-bordered"
+                        required
+                    />
+                </div>
+                <div class="modal-action">
+                    <label for="find-point-modal" class="btn">Cancel</label>
+                    <button type="submit" class="btn btn-primary">Find</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <link
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
     <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     ></script>
+    <script is:inline src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
     <script
         define:vars={{
@@ -339,6 +380,15 @@ const routes = routeResults
         const deviceBSelect = document.getElementById("deviceBId");
         const portBSelect = document.getElementById("portBId");
         const odpPathInput = document.getElementById("odpPath");
+
+        const findPointModalToggle =
+            document.getElementById("find-point-modal");
+        const findPointForm = document.getElementById("find-point-form");
+        const findPointConnectionIdInput = document.getElementById(
+            "find-point-connection-id",
+        );
+        const startNodeSelect = document.getElementById("start-node-select");
+        const distanceInput = document.getElementById("distance-input");
 
         function populatePorts(deviceSelect, portSelect, selectedPortId) {
             const selectedNodeId = deviceSelect.value;
@@ -486,6 +536,119 @@ const routes = routeResults
                     modalToggle.checked = true;
                 }
             });
+        });
+
+        // Find Point Logic
+        document.querySelectorAll(".btn-find-point").forEach((button) => {
+            button.addEventListener("click", (e) => {
+                const row = e.target.closest("tr");
+                const connectionId = parseInt(row.dataset.connectionId);
+                const conn = connectionMap.get(connectionId);
+
+                if (!conn) return;
+
+                // Populate the modal
+                findPointConnectionIdInput.value = connectionId;
+                startNodeSelect.innerHTML = ""; // Clear previous options
+
+                const nodeA = nodeMap.get(conn.deviceAId);
+                const nodeB = nodeMap.get(conn.deviceBId);
+
+                if (nodeA) {
+                    const optionA = document.createElement("option");
+                    optionA.value = nodeA.id;
+                    optionA.textContent = nodeA.name;
+                    startNodeSelect.appendChild(optionA);
+                }
+                if (nodeB) {
+                    const optionB = document.createElement("option");
+                    optionB.value = nodeB.id;
+                    optionB.textContent = nodeB.name;
+                    startNodeSelect.appendChild(optionB);
+                }
+
+                // Show the modal
+                findPointModalToggle.checked = true;
+            });
+        });
+
+        findPointForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+
+            const connectionId = parseInt(findPointConnectionIdInput.value);
+            const startNodeId = parseInt(startNodeSelect.value);
+            const distanceMeters = parseFloat(distanceInput.value);
+
+            if (isNaN(distanceMeters)) {
+                alert("Invalid distance.");
+                return;
+            }
+
+            const routeData = routes.find(
+                (r) => r.connectionId === connectionId,
+            );
+            if (!routeData) {
+                alert("Route not found for this connection.");
+                return;
+            }
+
+            if (distanceMeters > routeData.distance) {
+                alert(
+                    `Distance is greater than route distance (${routeData.distance.toFixed(
+                        2,
+                    )}m)`,
+                );
+                return;
+            }
+
+            const conn = connectionMap.get(connectionId);
+            let line = routeData.geometry;
+
+            // If the user selected Node B as the start, we need to reverse the line
+            if (startNodeId === conn.deviceBId) {
+                const reversedCoords = [...line.coordinates].reverse();
+                line = turf.lineString(reversedCoords);
+            }
+
+            const point = turf.along(line, distanceMeters, { units: "meters" });
+
+            // Add marker with shareable popup
+            const lat = point.geometry.coordinates[1];
+            const lng = point.geometry.coordinates[0];
+            const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
+            const popupContent = document.createElement("div");
+            popupContent.innerHTML = `
+                Point at ${distanceMeters}m from ${
+                    startNodeSelect.options[startNodeSelect.selectedIndex].text
+                }
+                <br><br>
+                <button class="btn btn-sm btn-primary copy-gmaps-link-btn">Copy Google Maps Link</button>
+            `;
+
+            const copyButton = popupContent.querySelector(
+                ".copy-gmaps-link-btn",
+            );
+            copyButton.addEventListener("click", () => {
+                navigator.clipboard
+                    .writeText(googleMapsUrl)
+                    .then(() => {
+                        alert("Google Maps link copied to clipboard!");
+                    })
+                    .catch((err) => {
+                        console.error("Failed to copy text: ", err);
+                        alert("Failed to copy link.");
+                    });
+            });
+
+            L.marker([lat, lng]).addTo(map).bindPopup(popupContent).openPopup();
+
+            // Fly to the point
+            map.flyTo([lat, lng], 15);
+
+            // Close the modal
+            findPointModalToggle.checked = false;
+            findPointForm.reset();
         });
     </script>
 </Layout>
