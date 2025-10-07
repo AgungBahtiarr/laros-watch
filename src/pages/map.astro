@@ -235,14 +235,6 @@ const routes = routeResults
         </div>
     </div>
 
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
-    <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    ></script>
-    <script is:inline src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
-
     <script
         define:vars={{
             nodes,
@@ -252,6 +244,22 @@ const routes = routeResults
             apiBaseUrl,
         }}
     >
+        window.pageData = {
+            nodes,
+            connections,
+            nodesWithLocation,
+            routes,
+            apiBaseUrl,
+        };
+    </script>
+    <script>
+        import L from "leaflet";
+        import "leaflet/dist/leaflet.css";
+        import * as turf from "@turf/turf";
+
+        const { nodes, connections, nodesWithLocation, routes, apiBaseUrl } =
+            window.pageData;
+
         // --- Helper Functions ---
         function stringToColor(str) {
             let hash = 0;
