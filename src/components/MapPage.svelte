@@ -57,16 +57,10 @@
     }
 
     onMount(() => {
-        map = L.map(mapElement).setView([-8.21, 114.37], 13);
-        if (nodesWithLocation.length > 0) {
-            map.setView(
-                [
-                    parseFloat(nodesWithLocation[0].lat),
-                    parseFloat(nodesWithLocation[0].lng),
-                ],
-                8,
-            );
-        }
+        map = L.map(mapElement).setView(
+            [-8.300408413489784, 114.28982906747387],
+            11,
+        );
 
         const streetLayer = L.tileLayer(
             "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
