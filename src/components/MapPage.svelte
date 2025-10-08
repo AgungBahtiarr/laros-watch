@@ -120,6 +120,9 @@
     }
 
     onMount(() => {
+        // Expose global functions for popup buttons
+        exposeGlobalFunctions();
+
         map = L.map(mapElement).setView(
             [-8.300408413489784, 114.28982906747387],
             11,
@@ -156,9 +159,16 @@
                         icon: blueIcon,
                         draggable: true,
                     },
-                )
-                    .addTo(map)
-                    .bindPopup(`<b>${odp.name}</b><br>${odp.location || ""}`);
+                ).addTo(map).bindPopup(`
+                        <div>
+                            <b>${odp.name}</b><br>
+                            ${odp.location || ""}<br><br>
+                            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                <button onclick="window.editOdp(${odp.id})" class="btn btn-sm btn-primary" style="padding: 4px 8px; font-size: 12px;">Edit</button>
+                                <button onclick="window.deleteOdp(${odp.id})" class="btn btn-sm btn-error" style="padding: 4px 8px; font-size: 12px;">Hapus</button>
+                            </div>
+                        </div>
+                    `);
 
                 // Initially disable dragging
                 if (marker.dragging) {
@@ -286,6 +296,20 @@
     });
 
     // --- Imperative Edit Mode Functions ---
+    // Expose functions to global window for popup buttons
+    function exposeGlobalFunctions() {
+        (window as any).editOdp = (odpId: number) => {
+            const odp = odps.find((o) => o.id === odpId);
+            if (odp) {
+                handleEditOdp(odp);
+            }
+        };
+
+        (window as any).deleteOdp = (odpId: number) => {
+            handleDeleteOdp(odpId);
+        };
+    }
+
     function activateEditMode(connId: number) {
         const conn = connections.find((c) => c.id === connId);
         if (conn && conn.odpPath && conn.odpPath.length > 0) {
@@ -701,17 +725,14 @@
         >
             <div class="flex flex-col">
                 <div class="flex items-center gap-2">
-                    <span class="font-semibold">🔧 Route Edit Mode Active</span>
+                    <span class="font-semibold">Route Edit Mode Active</span>
                     {#if dirtyOdps.size > 0}
                         <span class="badge badge-error badge-sm">
                             {dirtyOdps.size} unsaved changes
                         </span>
                     {/if}
                 </div>
-                <span class="text-sm">
-                    Editing: {editingConnection?.description ||
-                        `Connection ${editingConnectionId}`}
-                </span>
+
                 {#if editingConnection?.odpPath && editingConnection.odpPath.length > 0}
                     <span class="text-xs opacity-75">
                         Yellow pins can be dragged to reposition ODPs in
