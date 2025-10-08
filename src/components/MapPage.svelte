@@ -16,8 +16,8 @@
     let selectedRouteLayer = null;
     let findPointMarker = null;
     const routeLayers = {};
-    const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-    const connectionMap = new Map(connections.map((conn) => [conn.id, conn]));
+    $: nodeMap = new Map(nodes.map((node) => [node.id, node]));
+    $: connectionMap = new Map(connections.map((conn) => [conn.id, conn]));
 
     let showAddConnectionModal = false;
     let showFindPointModal = false;
@@ -53,6 +53,15 @@
 
     let portsA = [];
     let portsB = [];
+
+    // Reactive statements to populate ports when device IDs change
+    $: if (deviceAId && nodeMap) {
+        portsA = populatePorts(deviceAId);
+    }
+
+    $: if (deviceBId && nodeMap) {
+        portsB = populatePorts(deviceBId);
+    }
 
     async function reverseGeocode(lat, lng) {
         try {
@@ -281,12 +290,10 @@
     }
 
     function handleDeviceAChange() {
-        portsA = populatePorts(deviceAId);
         portAId = "";
     }
 
     function handleDeviceBChange() {
-        portsB = populatePorts(deviceBId);
         portBId = "";
     }
 
@@ -315,8 +322,6 @@
         deviceBId = conn.deviceBId.toString();
         portBId = conn.portBId.toString();
         odpPath = conn.odpPath?.join(", ") || "";
-        portsA = populatePorts(deviceAId);
-        portsB = populatePorts(deviceBId);
         showAddConnectionModal = true;
     }
 
@@ -677,7 +682,9 @@
                         >
                             <option disabled value="">Select Device</option>
                             {#each nodes as node}
-                                <option value={node.id}>{node.name}</option>
+                                <option value={node.id.toString()}
+                                    >{node.name}</option
+                                >
                             {/each}
                         </select>
                     </div>
@@ -692,7 +699,7 @@
                         >
                             <option disabled value="">Select Port</option>
                             {#each portsA as iface}
-                                <option value={iface.id}
+                                <option value={iface.id.toString()}
                                     >{iface.ifName} ({iface.ifDescr})</option
                                 >
                             {/each}
@@ -709,7 +716,9 @@
                         >
                             <option disabled value="">Select Device</option>
                             {#each nodes as node}
-                                <option value={node.id}>{node.name}</option>
+                                <option value={node.id.toString()}
+                                    >{node.name}</option
+                                >
                             {/each}
                         </select>
                     </div>
@@ -724,7 +733,7 @@
                         >
                             <option disabled value="">Select Port</option>
                             {#each portsB as iface}
-                                <option value={iface.id}
+                                <option value={iface.id.toString()}
                                     >{iface.ifName} ({iface.ifDescr})</option
                                 >
                             {/each}
