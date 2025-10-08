@@ -19,11 +19,7 @@
     let portAId = $state(connection?.portAId?.toString() || "");
     let deviceBId = $state(connection?.deviceBId?.toString() || "");
     let portBId = $state(connection?.portBId?.toString() || "");
-    let odpPathArray = $state(
-        connection?.odpPath
-            ?.map((id) => odps.find((o) => o.id === id))
-            .filter(Boolean) || [],
-    );
+    let odpPathArray = $state([]);
     let selectedOdpId = $state("");
 
     const nodeMap = $derived(new Map(nodes.map((node) => [node.id, node])));
@@ -72,10 +68,6 @@
                 portAId = connection.portAId?.toString() || "";
                 deviceBId = connection.deviceBId?.toString() || "";
                 portBId = connection.portBId?.toString() || "";
-                odpPathArray =
-                    connection.odpPath
-                        ?.map((id) => odps.find((o) => o.id === id))
-                        .filter(Boolean) || [];
             } else {
                 description = "";
                 deviceAId = "";
@@ -84,6 +76,26 @@
                 portBId = "";
                 odpPathArray = [];
             }
+        }
+    });
+
+    // Separate effect for odpPathArray to react to both connection and odps changes
+    $effect(() => {
+        if (isOpen && connection && connection.odpPath && odps.length > 0) {
+            const mapped = connection.odpPath
+                .map((item) => {
+                    // If item is already an object with id, use it directly
+                    if (typeof item === "object" && item.id) {
+                        return item;
+                    }
+                    // If item is an ID, find the corresponding ODP
+                    const found = odps.find((o) => o.id === item);
+                    return found;
+                })
+                .filter((odp) => odp !== undefined);
+            odpPathArray = mapped;
+        } else if (isOpen && !connection) {
+            odpPathArray = [];
         }
     });
 </script>

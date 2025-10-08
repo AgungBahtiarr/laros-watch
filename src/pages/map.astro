@@ -27,7 +27,31 @@ const routePromises = connections.map((conn) => {
     const nodeB = nodeMap.get(conn.deviceBId);
 
     if (nodeA && nodeB && osrmApiUrl) {
-        const url = `${osrmApiUrl}/${nodeA.lng},${nodeA.lat};${nodeB.lng},${nodeB.lat}?overview=full&geometries=geojson`;
+        let coordinates = `${nodeA.lng},${nodeA.lat}`;
+
+        if (
+            conn.odpPath &&
+            Array.isArray(conn.odpPath) &&
+            conn.odpPath.length > 0
+        ) {
+            const waypoints = conn.odpPath
+                .map((odp) => {
+                    if (odp && odp.lng && odp.lat) {
+                        return `${odp.lng},${odp.lat}`;
+                    }
+                    return null;
+                })
+                .filter(Boolean)
+                .join(";");
+
+            if (waypoints) {
+                coordinates += ";" + waypoints;
+            }
+        }
+
+        coordinates += `;${nodeB.lng},${nodeB.lat}`;
+
+        const url = `${osrmApiUrl}/${coordinates}?overview=full&geometries=geojson`;
         return fetch(url)
             .then((res) => res.json())
             .catch((error) => {
