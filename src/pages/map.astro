@@ -19,73 +19,38 @@ const connections: Connection[] = await connectionsResponse.json();
 const odps: Odp[] = await odpsResponse.json();
 
 const nodesWithLocation = nodes.filter((node) => node.lat && node.lng);
-const nodeMap = new Map(nodes.map((node) => [node.id, node]));
 
-// Prepare route promises
-const routePromises = connections.map((conn) => {
-    const nodeA = nodeMap.get(conn.deviceAId);
-    const nodeB = nodeMap.get(conn.deviceBId);
-
-    if (nodeA && nodeB && osrmApiUrl) {
-        let coordinates = `${nodeA.lng},${nodeA.lat}`;
-
-        if (
-            conn.odpPath &&
-            Array.isArray(conn.odpPath) &&
-            conn.odpPath.length > 0
-        ) {
-            const waypoints = conn.odpPath
-                .map((odp) => {
-                    if (odp && odp.lng && odp.lat) {
-                        return `${odp.lng},${odp.lat}`;
-                    }
-                    return null;
-                })
-                .filter(Boolean)
-                .join(";");
-
-            if (waypoints) {
-                coordinates += ";" + waypoints;
-            }
-        }
-
-        coordinates += `;${nodeB.lng},${nodeB.lat}`;
-
-        const url = `${osrmApiUrl}/${coordinates}?overview=full&geometries=geojson`;
-        return fetch(url)
-            .then((res) => res.json())
-            .catch((error) => {
-                console.error("OSRM API Fetch Error for URL:", url, error);
-                return null;
-            });
+// Group connections by device pair and select the one with ODP path if available
+const connectionGroups = new Map<string, Connection[]>();
+connections.forEach((conn) => {
+    const pairKey = [conn.deviceAId, conn.deviceBId].sort().join("-");
+    if (!connectionGroups.has(pairKey)) {
+        connectionGroups.set(pairKey, []);
     }
-    return Promise.resolve(null);
+    connectionGroups.get(pairKey)!.push(conn);
 });
 
-const routeResults = await Promise.all(routePromises);
-
-const routes = routeResults
-    .map((result, index) => {
-        if (result && result.routes && result.routes.length > 0) {
-            return {
-                geometry: result.routes[0].geometry,
-                distance: result.routes[0].distance, // in meters
-                connectionId: connections[index].id,
-            };
-        }
-        return null;
-    })
-    .filter(Boolean);
+const uniqueConnections: Connection[] = [];
+for (const group of connectionGroups.values()) {
+    const withOdp = group.find(
+        (c) => c.odpPath && Array.isArray(c.odpPath) && c.odpPath.length > 0,
+    );
+    if (withOdp) {
+        uniqueConnections.push(withOdp);
+    } else if (group.length > 0) {
+        uniqueConnections.push(group[0]);
+    }
+}
 ---
 
 <Layout title="Nodes Map">
     <MapPage
         client:only="svelte"
         nodes={nodes}
-        connections={connections}
+        connections={uniqueConnections}
         nodesWithLocation={nodesWithLocation}
-        routes={routes}
         apiBaseUrl={apiBaseUrl}
+        osrmApiUrl={osrmApiUrl}
         odps={odps}
     />
 </Layout>

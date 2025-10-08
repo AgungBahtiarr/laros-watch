@@ -8,10 +8,20 @@
         onEdit: (connection: Connection) => void;
         onDelete: (id: number) => void;
         onFindPoint: (connection: Connection) => void;
+        onEditRoute: (id: number) => void;
+        editingConnectionId?: number | null;
     };
 
-    const { connections, nodes, onView, onEdit, onDelete, onFindPoint } =
-        $props<Props>();
+    const {
+        connections,
+        nodes,
+        onView,
+        onEdit,
+        onDelete,
+        onFindPoint,
+        onEditRoute,
+        editingConnectionId = null,
+    } = $props<Props>();
 
     const nodeMap = $derived(new Map(nodes.map((node) => [node.id, node])));
 </script>
@@ -23,15 +33,43 @@
                 <th>Description</th>
                 <th>Device A</th>
                 <th>Device B</th>
+                <th>ODP Path</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {#each connections as conn}
-                <tr data-connection-id={conn.id}>
-                    <td>{conn.description}</td>
+                <tr
+                    data-connection-id={conn.id}
+                    class={editingConnectionId === conn.id
+                        ? "bg-yellow-100 border-l-4 border-yellow-500"
+                        : ""}
+                >
+                    <td>
+                        {conn.description}
+                        {#if editingConnectionId === conn.id}
+                            <span class="badge badge-warning badge-sm ml-2"
+                                >Editing Route</span
+                            >
+                        {/if}
+                    </td>
                     <td>{nodeMap.get(conn.deviceAId)?.name || "Unknown"}</td>
                     <td>{nodeMap.get(conn.deviceBId)?.name || "Unknown"}</td>
+                    <td>
+                        {#if conn.odpPath && conn.odpPath.length > 0}
+                            <div class="text-xs">
+                                {conn.odpPath
+                                    .map(
+                                        (odp, index) =>
+                                            `${index + 1}. ODP-${odp.id}`,
+                                    )
+                                    .join(" → ")}
+                            </div>
+                        {:else}
+                            <span class="text-gray-500 italic">No ODP path</span
+                            >
+                        {/if}
+                    </td>
                     <td class="flex gap-2">
                         <button
                             class="btn btn-sm btn-success"
@@ -44,6 +82,12 @@
                             onclick={() => onEdit(conn)}
                         >
                             Edit
+                        </button>
+                        <button
+                            class="btn btn-sm btn-secondary"
+                            onclick={() => onEditRoute(conn.id)}
+                        >
+                            Edit Route
                         </button>
                         <button
                             class="btn btn-sm btn-error"

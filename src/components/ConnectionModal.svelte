@@ -46,8 +46,16 @@
         odpPathArray = odpPathArray;
     }
 
-    function handleSubmit(event) {
-        event.preventDefault();
+    function handleSubmit() {
+        // 1. Basic validation
+        if (!deviceAId || !portAId || !deviceBId || !portBId || !description) {
+            alert(
+                "Please fill out all required fields: Description, Devices, and Ports.",
+            );
+            return;
+        }
+
+        // 2. Data parsing and creation
         const data = {
             id: connection?.id,
             deviceAId: parseInt(deviceAId),
@@ -57,6 +65,20 @@
             description: description,
             odpPath: odpPathArray.map((odp) => odp.id),
         };
+
+        // 3. Check for NaN values after parsing
+        if (
+            isNaN(data.deviceAId) ||
+            isNaN(data.portAId) ||
+            isNaN(data.deviceBId) ||
+            isNaN(data.portBId)
+        ) {
+            alert("Invalid device or port selection.");
+            console.error("handleSubmit parsed NaN values:", data);
+            return;
+        }
+
+        console.log("Submitting connection data:", data);
         onSave(data);
     }
 
@@ -123,7 +145,6 @@
                         <select
                             id="deviceAId"
                             class="select select-bordered"
-                            required
                             bind:value={deviceAId}
                             onchange={() => (portAId = "")}
                         >
@@ -140,7 +161,6 @@
                         <select
                             id="portAId"
                             class="select select-bordered"
-                            required
                             bind:value={portAId}
                             disabled={!portsA.length}
                         >
@@ -157,7 +177,6 @@
                         <select
                             id="deviceBId"
                             class="select select-bordered"
-                            required
                             bind:value={deviceBId}
                             onchange={() => (portBId = "")}
                         >
@@ -174,7 +193,6 @@
                         <select
                             id="portBId"
                             class="select select-bordered"
-                            required
                             bind:value={portBId}
                             disabled={!portsB.length}
                         >
@@ -243,7 +261,11 @@
                     <button type="button" class="btn" onclick={onClose}
                         >Cancel</button
                     >
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button
+                        type="button"
+                        class="btn btn-primary"
+                        onclick={handleSubmit}>Save</button
+                    >
                 </div>
             </form>
         </div>
