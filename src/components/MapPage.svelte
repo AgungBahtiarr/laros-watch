@@ -40,6 +40,10 @@
     let deviceBId = "";
     let portBId = "";
     let odpPath = "";
+    let odpPathArray = [];
+    let selectedOdpId = "";
+
+    $: odpPath = odpPathArray.map((o) => o.id).join(",");
 
     let findPointConnectionId = "";
     let startNodeId = "";
@@ -289,6 +293,21 @@
         return [];
     }
 
+    function addOdpToPath() {
+        if (selectedOdpId) {
+            const odpToAdd = odps.find((o) => o.id === parseInt(selectedOdpId));
+            if (odpToAdd) {
+                odpPathArray = [...odpPathArray, odpToAdd];
+                selectedOdpId = ""; // Reset dropdown
+            }
+        }
+    }
+
+    function removeOdpFromPath(index) {
+        odpPathArray.splice(index, 1);
+        odpPathArray = odpPathArray; // Trigger reactivity
+    }
+
     function handleDeviceAChange() {
         portAId = "";
     }
@@ -306,7 +325,7 @@
         portAId = "";
         deviceBId = "";
         portBId = "";
-        odpPath = "";
+        odpPathArray = [];
         portsA = [];
         portsB = [];
         showAddConnectionModal = true;
@@ -321,7 +340,25 @@
         portAId = conn.portAId.toString();
         deviceBId = conn.deviceBId.toString();
         portBId = conn.portBId.toString();
-        odpPath = conn.odpPath?.join(", ") || "";
+
+        // Handle odpPath - API returns array of ODP objects, not IDs
+        const path = conn.odpPath;
+
+        if (path && Array.isArray(path) && path.length > 0) {
+            // Check if first element is an object (ODP object) or number (ID)
+            if (typeof path[0] === "object" && path[0].id !== undefined) {
+                // Path contains ODP objects directly from API
+                odpPathArray = [...path];
+            } else {
+                // Path contains IDs, need to map to ODP objects
+                odpPathArray = path
+                    .map((id) => odps.find((o) => o.id == id))
+                    .filter(Boolean);
+            }
+        } else {
+            odpPathArray = [];
+        }
+
         showAddConnectionModal = true;
     }
 
@@ -332,10 +369,7 @@
             deviceBId: parseInt(deviceBId),
             portBId: parseInt(portBId),
             description: description,
-            odpPath: odpPath
-                .split(",")
-                .map((s) => parseInt(s.trim()))
-                .filter((n) => !isNaN(n)),
+            odpPath: odpPathArray.map((odp) => odp.id),
         };
 
         const url = isEdit
@@ -741,15 +775,54 @@
                     </div>
                 </div>
                 <div class="form-control mt-4">
-                    <label class="label" for="odpPath"
-                        >ODP Path (comma-separated IDs)</label
+                    <label class="label">
+                        <span class="label-text">ODP Path</span>
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <select
+                            class="select select-bordered w-full max-w-xs"
+                            bind:value={selectedOdpId}
+                        >
+                            <option disabled selected value=""
+                                >Select ODP</option
+                            >
+                            {#each odps as odp}
+                                <option value={odp.id}>{odp.name}</option>
+                            {/each}
+                        </select>
+                        <button
+                            type="button"
+                            class="btn btn-secondary"
+                            on:click={addOdpToPath}>Add</button
+                        >
+                    </div>
+                    <div
+                        class="mt-2 flex min-h-[40px] flex-wrap gap-2 rounded-lg bg-base-200 p-2"
                     >
-                    <input
-                        type="text"
-                        id="odpPath"
-                        class="input input-bordered"
-                        bind:value={odpPath}
-                    />
+                        {#each odpPathArray as odp, i}
+                            <div class="badge badge-lg badge-outline gap-2">
+                                <span>{odp.name}</span>
+                                <button
+                                    type="button"
+                                    class="btn btn-xs btn-ghost"
+                                    on:click={() => removeOdpFromPath(i)}
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        class="inline-block h-4 w-4 stroke-current"
+                                        ><path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"
+                                        ></path></svg
+                                    >
+                                </button>
+                            </div>
+                        {/each}
+                    </div>
                 </div>
                 <div class="modal-action">
                     <button
