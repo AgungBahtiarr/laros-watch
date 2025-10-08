@@ -1,20 +1,22 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import MapPage from "../components/MapPage.svelte";
-import type { Node, Connection } from "../types";
+import type { Node, Connection, Odp } from "../types";
 
 const apiBaseUrl =
     import.meta.env.PUBLIC_API_BASE_URL || "http://localhost:3000";
 const osrmApiUrl = import.meta.env.PUBLIC_OSRM_API_URL;
 
 // Fetch nodes and connections
-const [nodesResponse, connectionsResponse] = await Promise.all([
+const [nodesResponse, connectionsResponse, odpsResponse] = await Promise.all([
     fetch(`${apiBaseUrl}/api/nodes`),
     fetch(`${apiBaseUrl}/api/nodes/connections`),
+    fetch(`${apiBaseUrl}/api/nodes/odp`),
 ]);
 
 const nodes: Node[] = await nodesResponse.json();
 const connections: Connection[] = await connectionsResponse.json();
+const odps: Odp[] = await odpsResponse.json();
 
 const nodesWithLocation = nodes.filter((node) => node.lat && node.lng);
 const nodeMap = new Map(nodes.map((node) => [node.id, node]));
@@ -60,5 +62,6 @@ const routes = routeResults
         nodesWithLocation={nodesWithLocation}
         routes={routes}
         apiBaseUrl={apiBaseUrl}
+        odps={odps}
     />
 </Layout>

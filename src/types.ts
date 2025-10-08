@@ -64,3 +64,15 @@ export interface Connection {
   updatedAt: string;
   customRoute: CustomRoute | null;
 }
+
+export interface Odp {
+  id: number;
+  name: string;
+  location: string | null;
+  lat: string | null;
+  lng: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  connections: Connection[];
+}

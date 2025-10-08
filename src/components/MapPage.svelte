@@ -6,6 +6,7 @@
 
     export let nodes;
     export let connections;
+    export let odps = [];
     export let nodesWithLocation;
     export let routes;
     export let apiBaseUrl;
@@ -20,10 +21,16 @@
 
     let showAddConnectionModal = false;
     let showFindPointModal = false;
+    let showOdpModal = false;
     let isEdit = false;
+    let isEditingOdp = false;
+    let editingOdpId = null;
+    let isAddingOdpMode = false;
     let modalTitle = "Add New Connection";
+    let odpModalTitle = "Add ODP";
     let connectionForm;
     let findPointForm;
+    let odpForm;
 
     // Form fields
     let connectionId = "";
@@ -38,8 +45,30 @@
     let startNodeId = "";
     let distance = "";
 
+    let odpName = "";
+    let odpLocation = "";
+    let odpNotes = "";
+    let odpLat = null;
+    let odpLng = null;
+
     let portsA = [];
     let portsB = [];
+
+    async function reverseGeocode(lat, lng) {
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+            );
+            if (!response.ok) {
+                throw new Error("Reverse geocoding failed");
+            }
+            const data = await response.json();
+            return data.display_name;
+        } catch (error) {
+            console.error("Reverse geocoding error:", error);
+            return "";
+        }
+    }
 
     function stringToColor(str) {
         let hash = 0;
@@ -125,6 +154,17 @@
             shadowSize: [41, 41],
         });
 
+        const blueIcon = new L.Icon({
+            iconUrl:
+                "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+            shadowUrl:
+                "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41],
+        });
+
         nodesWithLocation.forEach((node) => {
             const icon = node.status ? greenIcon : redIcon;
             L.marker([parseFloat(node.lat), parseFloat(node.lng)], {
@@ -136,10 +176,50 @@
                 );
         });
 
-        map.on("click", () => {
-            if (selectedRouteLayer) {
+        odps.forEach((odp) => {
+            if (odp.lat && odp.lng) {
+                const popupContent = `
+                <b>${odp.name}</b><br>
+                ${odp.location || ""}
+                <div class="mt-2 flex gap-2">
+                    <button class="btn btn-xs btn-info btn-edit-odp" data-odp-id="${odp.id}">Edit</button>
+                    <button class="btn btn-xs btn-error btn-delete-odp" data-odp-id="${odp.id}">Delete</button>
+                </div>
+            `;
+
+                const marker = L.marker(
+                    [parseFloat(odp.lat), parseFloat(odp.lng)],
+                    { icon: blueIcon },
+                )
+                    .addTo(map)
+                    .bindPopup(popupContent);
+
+                marker.on("popupopen", () => {
+                    const popupElem = marker.getPopup().getElement();
+                    popupElem
+                        .querySelector(".btn-edit-odp")
+                        .addEventListener("click", (e) => {
+                            const odpId = e.target.dataset.odpId;
+                            openEditOdpModal(odpId);
+                        });
+                    popupElem
+                        .querySelector(".btn-delete-odp")
+                        .addEventListener("click", (e) => {
+                            const odpId = e.target.dataset.odpId;
+                            handleDeleteOdp(odpId);
+                        });
+                });
+            }
+        });
+
+        map.on("click", (e) => {
+            if (isAddingOdpMode) {
+                openAddOdpModal(e.latlng);
+                isAddingOdpMode = false; // Reset mode after click
+            } else if (selectedRouteLayer) {
                 selectedRouteLayer.setStyle(selectedRouteLayer.originalStyle);
                 selectedRouteLayer = null;
+                return;
             }
         });
 
@@ -387,6 +467,86 @@
 
         showFindPointModal = false;
     }
+
+    async function openAddOdpModal(latlng) {
+        isEditingOdp = false;
+        odpModalTitle = "Add ODP";
+        odpLat = latlng.lat;
+        odpLng = latlng.lng;
+        odpName = "";
+        odpLocation = await reverseGeocode(odpLat, odpLng);
+        odpNotes = "";
+        showOdpModal = true;
+    }
+
+    async function openEditOdpModal(odpId) {
+        const odp = odps.find((o) => o.id == odpId);
+        if (!odp) return;
+        isEditingOdp = true;
+        editingOdpId = odpId;
+        odpModalTitle = "Edit ODP";
+        odpName = odp.name;
+        odpLocation = odp.location || (await reverseGeocode(odp.lat, odp.lng));
+        odpNotes = odp.notes;
+        odpLat = odp.lat;
+        odpLng = odp.lng;
+        showOdpModal = true;
+    }
+
+    async function handleOdpSubmit() {
+        const data = {
+            name: odpName,
+            location: odpLocation,
+            notes: odpNotes,
+            lat: odpLat.toString(),
+            lng: odpLng.toString(),
+        };
+
+        const url = isEditingOdp
+            ? `${apiBaseUrl}/api/nodes/odp/${editingOdpId}`
+            : `${apiBaseUrl}/api/nodes/odp`;
+        const method = isEditingOdp ? "PUT" : "POST";
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(
+                    `Failed to save ODP: ${response.status} ${response.statusText} - ${errorText}`,
+                );
+            }
+            showOdpModal = false;
+            location.reload();
+        } catch (error) {
+            console.error(error);
+            alert("Error: " + error.message);
+        }
+    }
+
+    async function handleDeleteOdp(odpId) {
+        if (confirm("Are you sure you want to delete this ODP?")) {
+            try {
+                const response = await fetch(
+                    `${apiBaseUrl}/api/nodes/odp/${odpId}`,
+                    { method: "DELETE" },
+                );
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(
+                        `Failed to delete ODP: ${response.status} ${response.statusText} - ${errorText}`,
+                    );
+                }
+                location.reload();
+            } catch (error) {
+                console.error(error);
+                alert("Error: " + error.message);
+            }
+        }
+    }
 </script>
 
 <div class="container mx-auto px-4 py-8">
@@ -394,14 +554,46 @@
     <div
         bind:this={mapElement}
         class="h-[600px] rounded-lg shadow-lg mb-8 z-10 relative"
+        class:cursor-crosshair={isAddingOdpMode}
     ></div>
 
+    {#if isAddingOdpMode}
+        <div
+            class="absolute top-20 left-1/2 -translate-x-1/2 bg-warning text-warning-content p-2 rounded-lg shadow-lg z-20 flex items-center gap-2"
+        >
+            <span>Click on the map to place the ODP</span>
+            <button
+                class="btn btn-xs btn-circle"
+                on:click={() => (isAddingOdpMode = false)}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    ><path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                    /></svg
+                >
+            </button>
+        </div>
+    {/if}
     <!-- Connections Table -->
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-2xl font-bold">Connections</h2>
-        <button class="btn btn-primary" on:click={openAddModal}
-            >Add Connection</button
-        >
+        <div class="flex gap-2">
+            <button class="btn btn-primary" on:click={openAddModal}
+                >Add Connection</button
+            >
+            <button
+                class="btn btn-secondary"
+                on:click={() => (isAddingOdpMode = true)}>Add ODP</button
+            >
+        </div>
     </div>
     <div class="overflow-x-auto">
         <table class="table w-full">
@@ -454,7 +646,7 @@
     </div>
 </div>
 
-<!-- Add/Edit Modal -->
+<!-- Add/Edit Connection Modal -->
 {#if showAddConnectionModal}
     <div class="modal modal-open">
         <div class="modal-box w-11/12 max-w-2xl">
@@ -587,14 +779,14 @@
                                 findPointConnectionId,
                             )}
                             {#if nodeMap.get(conn.deviceAId)}
-                                <option value={conn.deviceAId}
-                                    >{nodeMap.get(conn.deviceAId).name}</option
-                                >
+                                <option value={conn.deviceAId}>
+                                    {nodeMap.get(conn.deviceAId).name}
+                                </option>
                             {/if}
                             {#if nodeMap.get(conn.deviceBId)}
-                                <option value={conn.deviceBId}
-                                    >{nodeMap.get(conn.deviceBId).name}</option
-                                >
+                                <option value={conn.deviceBId}>
+                                    {nodeMap.get(conn.deviceBId).name}
+                                </option>
                             {/if}
                         {/if}
                     </select>
@@ -619,6 +811,55 @@
                         >Cancel</button
                     >
                     <button type="submit" class="btn btn-primary">Find</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{/if}
+
+<!-- Add/Edit ODP Modal -->
+{#if showOdpModal}
+    <div class="modal modal-open">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">{odpModalTitle}</h3>
+            <form
+                on:submit|preventDefault={handleOdpSubmit}
+                bind:this={odpForm}
+            >
+                <div class="form-control">
+                    <label class="label" for="odpName">Name</label>
+                    <input
+                        type="text"
+                        id="odpName"
+                        class="input input-bordered"
+                        required
+                        bind:value={odpName}
+                    />
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label" for="odpLocation">Location</label>
+                    <input
+                        type="text"
+                        id="odpLocation"
+                        class="input input-bordered"
+                        bind:value={odpLocation}
+                    />
+                </div>
+                <div class="form-control mt-4">
+                    <label class="label" for="odpNotes">Notes</label>
+                    <textarea
+                        id="odpNotes"
+                        class="textarea textarea-bordered"
+                        bind:value={odpNotes}
+                    ></textarea>
+                </div>
+                <div class="modal-action">
+                    <button
+                        type="button"
+                        class="btn"
+                        on:click={() => (showOdpModal = false)}>Cancel</button
+                    >
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
         </div>
