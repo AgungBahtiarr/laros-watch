@@ -176,11 +176,12 @@
                     </div>
                 </div>
                 <div class="form-control mt-4">
-                    <label class="label">
+                    <label class="label" for="odp-path-select">
                         <span class="label-text">ODP Path</span>
                     </label>
                     <div class="flex items-center gap-2">
                         <select
+                            id="odp-path-select"
                             class="select select-bordered w-full max-w-xs"
                             bind:value={selectedOdpId}
                         >
@@ -207,6 +208,7 @@
                                     type="button"
                                     class="btn btn-xs btn-ghost"
                                     onclick={() => removeOdpFromPath(i)}
+                                    aria-label="Remove ODP from path"
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"

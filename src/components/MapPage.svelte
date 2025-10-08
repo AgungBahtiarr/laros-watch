@@ -458,6 +458,7 @@
             <button
                 class="btn btn-xs btn-circle"
                 onclick={() => (isAddingOdpMode = false)}
+                aria-label="Close notification"
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
