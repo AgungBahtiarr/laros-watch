@@ -789,31 +789,66 @@
         </div>
     {/if}
 
-    <div
-        bind:this={mapElement}
-        class="h-[600px] rounded-lg shadow-lg mb-8 z-10 relative"
-    ></div>
+    <div class="flex flex-col lg:flex-row gap-8">
+        <!-- Left Column: Map -->
+        <div class="lg:w-3/5 xl:w-2/3 flex flex-col">
+            <div
+                bind:this={mapElement}
+                class="h-[600px] lg:h-full rounded-lg shadow-lg z-10 relative flex-grow"
+            ></div>
+            <div class="mt-4">
+                <span class="mr-4 font-medium">Routing Engine:</span>
+                <label class="mr-4">
+                    <input
+                        type="radio"
+                        name="routing-service"
+                        value="osrm"
+                        bind:group={routingService}
+                    />
+                    OSRM
+                </label>
+                <label>
+                    <input
+                        type="radio"
+                        name="routing-service"
+                        value="graphhopper"
+                        bind:group={routingService}
+                    />
+                    GraphHopper
+                </label>
+            </div>
+        </div>
 
-    <div class="mb-4">
-        <span class="mr-4 font-medium">Routing Engine:</span>
-        <label class="mr-4">
-            <input
-                type="radio"
-                name="routing-service"
-                value="osrm"
-                bind:group={routingService}
-            />
-            OSRM
-        </label>
-        <label>
-            <input
-                type="radio"
-                name="routing-service"
-                value="graphhopper"
-                bind:group={routingService}
-            />
-            GraphHopper
-        </label>
+        <!-- Right Column: Table -->
+        <div
+            class="lg:w-2/5 xl:w-1/3 flex flex-col max-h-[700px] border-black border-1 p-3 rounded-md"
+        >
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Connections</h2>
+                <div class="flex gap-2">
+                    <button
+                        class="btn btn-primary btn-sm"
+                        onclick={handleAddConnection}>Add Connection</button
+                    >
+                    <button
+                        class="btn btn-secondary btn-sm"
+                        onclick={handleAddOdp}>Add ODP</button
+                    >
+                </div>
+            </div>
+            <div class="flex-grow overflow-y-auto hide-scrollbar border-black">
+                <ConnectionTable
+                    {connections}
+                    {nodes}
+                    onView={viewConnection}
+                    onEdit={handleEditConnection}
+                    onDelete={deleteConnection}
+                    onFindPoint={handleFindPointModal}
+                    onEditRoute={handleEditRoute}
+                    {editingConnectionId}
+                />
+            </div>
+        </div>
     </div>
 
     {#if editingConnectionId !== null && dirtyOdps.size > 0}
@@ -856,29 +891,6 @@
             </button>
         </div>
     {/if}
-
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold">Connections</h2>
-        <div class="flex gap-2">
-            <button class="btn btn-primary" onclick={handleAddConnection}
-                >Add Connection</button
-            >
-            <button class="btn btn-secondary" onclick={handleAddOdp}
-                >Add ODP</button
-            >
-        </div>
-    </div>
-
-    <ConnectionTable
-        {connections}
-        {nodes}
-        onView={viewConnection}
-        onEdit={handleEditConnection}
-        onDelete={deleteConnection}
-        onFindPoint={handleFindPointModal}
-        onEditRoute={handleEditRoute}
-        {editingConnectionId}
-    />
 </div>
 
 <ConnectionModal
@@ -905,3 +917,13 @@
     onSave={handleSaveOdp}
     onClose={() => (showOdpModal = false)}
 />
+
+<style>
+    .hide-scrollbar {
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, and Opera */
+    }
+</style>

@@ -183,39 +183,54 @@
     </div>
 </div>
 
-<!-- Table -->
-<div class="overflow-x-auto bg-base-100 border border-base-300 rounded-lg">
-    <table class="table w-full">
-        <thead>
-            <tr>
-                <th>Description</th>
-                <th>Device A</th>
-                <th>Device B</th>
-                <th>ODP Path</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {#each paginatedConnections as conn}
-                <tr
-                    data-connection-id={conn.id}
-                    class={editingConnectionId === conn.id
-                        ? "bg-yellow-100 border-l-4 border-yellow-500"
-                        : ""}
-                >
-                    <td>
-                        {conn.description}
-                        {#if editingConnectionId === conn.id}
-                            <span class="badge badge-warning badge-sm ml-2"
-                                >Editing Route</span
-                            >
-                        {/if}
-                    </td>
-                    <td>{nodeMap.get(conn.deviceAId)?.name || "Unknown"}</td>
-                    <td>{nodeMap.get(conn.deviceBId)?.name || "Unknown"}</td>
-                    <td>
+<!-- Cards Layout -->
+<div
+    class="grid gap-4"
+    style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))"
+>
+    {#each paginatedConnections as conn (conn.id)}
+        <div
+            data-connection-id={conn.id}
+            class="card bg-base-100 shadow-md border transition-all duration-300 {editingConnectionId ===
+            conn.id
+                ? 'border-yellow-500 border-2'
+                : 'border-base-300'}"
+        >
+            <div class="card-body p-4">
+                <h3 class="card-title text-base font-bold truncate">
+                    {conn.description}
+                    {#if editingConnectionId === conn.id}
+                        <span class="badge badge-warning badge-sm ml-2"
+                            >Editing</span
+                        >
+                    {/if}
+                </h3>
+
+                <div class="text-sm space-y-2 mt-2">
+                    <div class="flex justify-between">
+                        <span class="font-semibold text-base-content/70"
+                            >Device A:</span
+                        >
+                        <span class="font-mono text-right"
+                            >{nodeMap.get(conn.deviceAId)?.name ||
+                                "Unknown"}</span
+                        >
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="font-semibold text-base-content/70"
+                            >Device B:</span
+                        >
+                        <span class="font-mono text-right"
+                            >{nodeMap.get(conn.deviceBId)?.name ||
+                                "Unknown"}</span
+                        >
+                    </div>
+                    <div>
+                        <span class="font-semibold text-base-content/70"
+                            >ODP Path:</span
+                        >
                         {#if conn.odpPath && conn.odpPath.length > 0}
-                            <div class="text-xs">
+                            <div class="text-xs font-mono mt-1">
                                 {conn.odpPath
                                     .map(
                                         (odp, index) =>
@@ -224,59 +239,60 @@
                                     .join(" → ")}
                             </div>
                         {:else}
-                            <span class="text-base-content/50 italic"
+                            <span class="text-base-content/50 italic text-xs"
                                 >No ODP path</span
                             >
                         {/if}
-                    </td>
-                    <td>
-                        <div class="flex flex-wrap gap-1">
-                            <button
-                                class="btn btn-sm btn-success"
-                                onclick={() => onView(conn.id)}
-                            >
-                                View
-                            </button>
-                            <button
-                                class="btn btn-sm btn-info"
-                                onclick={() => onEdit(conn)}
-                            >
-                                Edit
-                            </button>
-                            <button
-                                class="btn btn-sm btn-secondary"
-                                onclick={() => onEditRoute(conn.id)}
-                            >
-                                Edit ODP Route
-                            </button>
-                            <button
-                                class="btn btn-sm btn-warning"
-                                onclick={() => onFindPoint(conn)}
-                            >
-                                Find
-                            </button>
-                            <button
-                                class="btn btn-sm btn-error"
-                                onclick={() => onDelete(conn.id)}
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            {:else}
-                <tr>
-                    <td colspan="5" class="text-center py-8">
-                        {#if searchQuery.trim()}
-                            No connections found matching your search.
-                        {:else}
-                            No connections available.
-                        {/if}
-                    </td>
-                </tr>
-            {/each}
-        </tbody>
-    </table>
+                    </div>
+                </div>
+
+                <div class="card-actions justify-end mt-4">
+                    <div class="flex flex-wrap gap-1 justify-end">
+                        <button
+                            class="btn btn-xs btn-success"
+                            onclick={() => onView(conn.id)}
+                        >
+                            View
+                        </button>
+                        <button
+                            class="btn btn-xs btn-info"
+                            onclick={() => onEdit(conn)}
+                        >
+                            Edit
+                        </button>
+                        <button
+                            class="btn btn-xs btn-secondary"
+                            onclick={() => onEditRoute(conn.id)}
+                        >
+                            Route
+                        </button>
+                        <button
+                            class="btn btn-xs btn-warning"
+                            onclick={() => onFindPoint(conn)}
+                        >
+                            Find
+                        </button>
+                        <button
+                            class="btn btn-xs btn-error"
+                            onclick={() => onDelete(conn.id)}
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {:else}
+        <div class="col-span-full text-center py-16 bg-base-200 rounded-lg">
+            <p class="text-lg font-semibold">
+                {#if searchQuery.trim()}
+                    No connections found matching your search.
+                {:else}
+                    No connections available.
+                {/if}
+            </p>
+        </div>
+    {/each}
 </div>
 
 <!-- Pagination -->
