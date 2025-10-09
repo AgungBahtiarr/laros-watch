@@ -256,7 +256,17 @@
 
                     routingControl.on("routesfound", (e: any) => {
                         const route = e.routes[0];
-                        if (!route) return;
+                        if (
+                            !route ||
+                            !route.coordinates ||
+                            route.coordinates.length < 2
+                        ) {
+                            console.error(
+                                `Invalid route found for connection ${conn.id}:`,
+                                e,
+                            );
+                            return;
+                        }
                         const routeGeom = turf.lineString(
                             route.coordinates.map((c: any) => [c.lng, c.lat]),
                         );
