@@ -21,10 +21,12 @@ const odps: Odp[] = await odpsResponse.json();
 
 const nodesWithLocation = nodes.filter((node) => node.lat && node.lng);
 
-// Group connections by device pair and select the one with ODP path if available
+// Group connections by device and port pair, and select the one with ODP path if available
 const connectionGroups = new Map<string, Connection[]>();
 connections.forEach((conn) => {
-    const pairKey = [conn.deviceAId, conn.deviceBId].sort().join("-");
+    const pair1 = `${conn.deviceAId}:${conn.portAId}`;
+    const pair2 = `${conn.deviceBId}:${conn.portBId}`;
+    const pairKey = [pair1, pair2].sort().join("-");
     if (!connectionGroups.has(pairKey)) {
         connectionGroups.set(pairKey, []);
     }
