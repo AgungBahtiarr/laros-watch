@@ -6,6 +6,7 @@ import type { Node, Connection, Odp } from "../types";
 const apiBaseUrl =
     import.meta.env.PUBLIC_API_BASE_URL || "http://localhost:3000";
 const osrmApiUrl = import.meta.env.PUBLIC_OSRM_API_URL;
+const graphhopperApiUrl = import.meta.env.PUBLIC_GRAPHHOPPER_URL;
 
 // Fetch nodes and connections
 const [nodesResponse, connectionsResponse, odpsResponse] = await Promise.all([
@@ -51,6 +52,7 @@ for (const group of connectionGroups.values()) {
         nodesWithLocation={nodesWithLocation}
         apiBaseUrl={apiBaseUrl}
         osrmApiUrl={osrmApiUrl}
+        graphhopperApiUrl={graphhopperApiUrl}
         odps={odps}
     />
 </Layout>

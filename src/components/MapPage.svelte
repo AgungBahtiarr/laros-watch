@@ -4,6 +4,7 @@
     import "leaflet/dist/leaflet.css";
     import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
     import "leaflet-routing-machine";
+    import "lrm-graphhopper";
     import * as turf from "@turf/turf";
     import type { Connection, Node, Odp } from "../types";
 
@@ -19,6 +20,7 @@
         nodesWithLocation: Node[];
         apiBaseUrl: string;
         osrmApiUrl: string;
+        graphhopperApiUrl: string;
     };
 
     const {
@@ -28,11 +30,13 @@
         nodesWithLocation,
         apiBaseUrl,
         osrmApiUrl,
+        graphhopperApiUrl,
     } = $props<Props>();
 
     let map: L.Map;
     let mapElement: HTMLElement;
     let findPointMarker: L.Marker | null = null;
+    let routingService = $state("osrm");
 
     // Map objects
     const routeLayers: { [key: number]: L.GeoJSON } = {};
@@ -120,6 +124,11 @@
     }
 
     onMount(() => {
+        const savedService = localStorage.getItem("routingService");
+        if (savedService === "osrm" || savedService === "graphhopper") {
+            routingService = savedService;
+        }
+
         // Expose global functions for popup buttons
         exposeGlobalFunctions();
 
@@ -195,15 +204,39 @@
             }
         });
 
-        map.on("click", () => {
-            if (selectedRouteLayer) {
+        map.on("click", (e) => {
+            if (isAddingOdpMode) {
+                newOdpLatLng = e.latlng;
+                isEditOdp = false;
+                selectedOdp = null;
+                showOdpModal = true;
+                isAddingOdpMode = false;
+                mapElement.style.cursor = "";
+            } else if (selectedRouteLayer) {
                 selectedRouteLayer.setStyle(
                     originalStyles.get(selectedRouteLayer)!,
                 );
                 selectedRouteLayer = null;
             }
         });
+    });
 
+    $effect(() => {
+        if (!map) return; // Wait for map to be initialized
+
+        // This effect reruns when `routingService` changes.
+        // Clear all existing routes and controls before recreating them.
+        Object.values(routeControls).forEach((control) => control.remove());
+        Object.values(routeLayers).forEach((layer) => layer.remove());
+
+        for (const prop in routeControls) delete routeControls[prop];
+        for (const prop in routeLayers) delete routeLayers[prop];
+        for (const prop in routeGeometries) delete routeGeometries[prop];
+        for (const prop in routeDistances) delete routeDistances[prop];
+        originalStyles.clear();
+        selectedRouteLayer = null;
+
+        // Recreate all routes with the selected routing engine
         if (connections && connections.length > 0) {
             connections.forEach((conn) => {
                 const nodeA = nodeMap.get(conn.deviceAId);
@@ -239,7 +272,15 @@
 
                     const routingControl = L.Routing.control({
                         waypoints,
-                        router: L.Routing.osrmv1({ serviceUrl: osrmApiUrl }),
+                        router:
+                            routingService === "osrm"
+                                ? L.Routing.osrmv1({ serviceUrl: osrmApiUrl })
+                                : new L.Routing.GraphHopper("", {
+                                      serviceUrl: graphhopperApiUrl,
+                                      urlParameters: {
+                                          profile: "car",
+                                      },
+                                  }),
                         lineOptions: { styles: [{ opacity: 0, weight: 0 }] },
                         createMarker: () => null,
                         addWaypoints: false,
@@ -258,7 +299,9 @@
                         routeDistances[conn.id] = route.summary.totalDistance;
                         let routeLayer = routeLayers[conn.id];
                         if (!routeLayer) {
-                            const popup = `<b>${conn.description || "C"}</b><br>${(route.summary.totalDistance / 1000).toFixed(2)} km`;
+                            const popup = `<b>${conn.description || "C"}</b><br>${(
+                                route.summary.totalDistance / 1000
+                            ).toFixed(2)} km`;
                             const style: L.PathOptions = {
                                 color: stringToColor(conn.id.toString()),
                                 weight: 5,
@@ -293,6 +336,11 @@
                 }
             });
         }
+    });
+
+    $effect(() => {
+        // Persist the user's choice to localStorage
+        localStorage.setItem("routingService", routingService);
     });
 
     // --- Imperative Edit Mode Functions ---
@@ -695,6 +743,7 @@
         showFindPointModal = true;
     }
     function handleAddOdp() {
+        mapElement.style.cursor = "crosshair";
         isAddingOdpMode = true;
     }
     function handleEditOdp(odp: Odp) {
@@ -704,9 +753,15 @@
     }
 
     function handleKeydown(event: KeyboardEvent) {
-        if (event.key === "Escape" && editingConnectionId !== null) {
-            event.preventDefault();
-            cancelEditing();
+        if (event.key === "Escape") {
+            if (editingConnectionId !== null) {
+                event.preventDefault();
+                cancelEditing();
+            } else if (isAddingOdpMode) {
+                event.preventDefault();
+                isAddingOdpMode = false;
+                mapElement.style.cursor = "";
+            }
         }
     }
 </script>
@@ -715,6 +770,14 @@
 
 <div class="container mx-auto px-4 py-8">
     <h1 class="text-3xl font-bold mb-6">Nodes Map & Connections</h1>
+
+    {#if isAddingOdpMode}
+        <div class="toast toast-top toast-center z-50">
+            <div class="alert alert-info">
+                <span>Click on the map to place the new ODP.</span>
+            </div>
+        </div>
+    {/if}
 
     {#if editingConnectionId !== null}
         {@const editingConnection = connections.find(
@@ -755,6 +818,28 @@
         bind:this={mapElement}
         class="h-[600px] rounded-lg shadow-lg mb-8 z-10 relative"
     ></div>
+
+    <div class="mb-4">
+        <span class="mr-4 font-medium">Routing Engine:</span>
+        <label class="mr-4">
+            <input
+                type="radio"
+                name="routing-service"
+                value="osrm"
+                bind:group={routingService}
+            />
+            OSRM
+        </label>
+        <label>
+            <input
+                type="radio"
+                name="routing-service"
+                value="graphhopper"
+                bind:group={routingService}
+            />
+            GraphHopper
+        </label>
+    </div>
 
     {#if editingConnectionId !== null && dirtyOdps.size > 0}
         <div class="fixed bottom-10 right-10 z-[1000] flex gap-2">
