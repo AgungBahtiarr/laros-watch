@@ -8,6 +8,30 @@
     <div class="container mx-auto">
         <div class="navbar">
             <div class="navbar-start">
+                <div class="dropdown">
+                    <label tabindex="0" class="btn btn-ghost lg:hidden">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="h-5 w-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            ><path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6h16M4 12h8m-8 6h16"></path></svg
+                        >
+                    </label>
+                    <ul
+                        tabindex="0"
+                        class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52"
+                    >
+                        <li><a href="/">Nodes</a></li>
+                        <li><a href="/domains">Domains</a></li>
+                        <li><a href="/map">Maps</a></li>
+                    </ul>
+                </div>
                 <a href="/" class="btn btn-ghost normal-case text-xl">
                     Laros Watch
                 </a>
@@ -56,13 +80,6 @@
                         ></path></svg
                     >
                 </label>
-                <a
-                    href="https://github.com/laros-id/laros-watch"
-                    target="_blank"
-                    class="btn btn-ghost"
-                >
-                    Github
-                </a>
             </div>
         </div>
     </div>

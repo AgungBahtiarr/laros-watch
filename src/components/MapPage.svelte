@@ -821,9 +821,9 @@
 
         <!-- Right Column: Table -->
         <div
-            class="lg:w-2/5 xl:w-1/3 flex flex-col max-h-[700px] border-black border-1 p-3 rounded-md"
+            class="lg:w-2/5 xl:w-1/3 flex flex-col h-[700px] border-black border-1 p-3 rounded-md"
         >
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex-col md:flex-row justify-between items-center mb-4">
                 <h2 class="text-2xl font-bold">Connections</h2>
                 <div class="flex gap-2">
                     <button
