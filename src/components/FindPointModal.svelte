@@ -37,7 +37,7 @@
         }
     });
 
-    let dialog: HTMLDialogElement;
+    let dialog = $state();
 
     $effect(() => {
         if (dialog) {
