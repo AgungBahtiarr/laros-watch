@@ -90,32 +90,38 @@
     <div class="modal-box w-full max-w-lg">
         <h3 class="font-bold text-lg">{isEdit ? "Edit" : "Add"} ODP</h3>
         <form onsubmit={handleSubmit}>
-            <div class="form-control">
-                <label class="label" for="odpName">Name</label>
-                <input
-                    type="text"
-                    id="odpName"
-                    class="input input-bordered"
-                    required
-                    bind:value={name}
-                />
+            <div class="form-control mt-3">
+                <div class="flex flex-col gap-2">
+                    <label class="label" for="odpName">Name</label>
+                    <input
+                        type="text"
+                        id="odpName"
+                        class="input input-bordered w-full"
+                        required
+                        bind:value={name}
+                    />
+                </div>
             </div>
-            <div class="form-control mt-4">
-                <label class="label" for="odpLocation">Location</label>
-                <input
-                    type="text"
-                    id="odpLocation"
-                    class="input input-bordered"
-                    bind:value={location}
-                />
+            <div class="form-control mt-2">
+                <div class="flex flex-col gap-2">
+                    <label class="label" for="odpLocation">Location</label>
+                    <input
+                        type="text"
+                        id="odpLocation"
+                        class="input input-bordered w-full"
+                        bind:value={location}
+                    />
+                </div>
             </div>
-            <div class="form-control mt-4">
-                <label class="label" for="odpNotes">Notes</label>
-                <textarea
-                    id="odpNotes"
-                    class="textarea textarea-bordered"
-                    bind:value={notes}
-                ></textarea>
+            <div class="form-control mt-2">
+                <div class="flex flex-col gap-2">
+                    <label class="label" for="odpNotes">Notes</label>
+                    <textarea
+                        id="odpNotes"
+                        class="textarea textarea-bordered w-full"
+                        bind:value={notes}
+                    ></textarea>
+                </div>
             </div>
             <div class="modal-action">
                 <button type="button" class="btn" onclick={onClose}

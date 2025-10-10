@@ -59,38 +59,42 @@
         <div class="modal-box w-full max-w-lg">
             <h3 class="font-bold text-lg">Find Point on Route</h3>
             <form onsubmit={handleSubmit}>
-                <div class="form-control">
-                    <label class="label" for="start-node-select"
-                        >Start From</label
-                    >
-                    <select
-                        id="start-node-select"
-                        class="select select-bordered"
-                        bind:value={startNodeId}
-                    >
-                        {#if nodeMap.get(connection.deviceAId)}
-                            <option value={connection.deviceAId}>
-                                {nodeMap.get(connection.deviceAId)!.name}
-                            </option>
-                        {/if}
-                        {#if nodeMap.get(connection.deviceBId)}
-                            <option value={connection.deviceBId}>
-                                {nodeMap.get(connection.deviceBId)!.name}
-                            </option>
-                        {/if}
-                    </select>
+                <div class="form-control mt-2">
+                    <div class="flex flex-col gap-2">
+                        <label class="label" for="start-node-select"
+                            >Start From</label
+                        >
+                        <select
+                            id="start-node-select"
+                            class="select select-bordered w-full"
+                            bind:value={startNodeId}
+                        >
+                            {#if nodeMap.get(connection.deviceAId)}
+                                <option value={connection.deviceAId}>
+                                    {nodeMap.get(connection.deviceAId)!.name}
+                                </option>
+                            {/if}
+                            {#if nodeMap.get(connection.deviceBId)}
+                                <option value={connection.deviceBId}>
+                                    {nodeMap.get(connection.deviceBId)!.name}
+                                </option>
+                            {/if}
+                        </select>
+                    </div>
                 </div>
-                <div class="form-control mt-4">
-                    <label class="label" for="distance-input"
-                        >Distance (meters)</label
-                    >
-                    <input
-                        type="number"
-                        id="distance-input"
-                        class="input input-bordered"
-                        required
-                        bind:value={distance}
-                    />
+                <div class="form-control mt-2">
+                    <div class="flex flex-col gap-2">
+                        <label class="label" for="distance-input"
+                            >Distance (meters)</label
+                        >
+                        <input
+                            type="number"
+                            id="distance-input"
+                            class="input input-bordered w-full"
+                            required
+                            bind:value={distance}
+                        />
+                    </div>
                 </div>
                 <div class="modal-action">
                     <button type="button" class="btn" onclick={onClose}

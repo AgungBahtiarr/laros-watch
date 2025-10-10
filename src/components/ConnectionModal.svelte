@@ -280,14 +280,16 @@
         </h3>
         <form onsubmit={handleSubmit}>
             <div class="form-control">
-                <label class="label" for="description">Description</label>
-                <input
-                    type="text"
-                    id="description"
-                    class="input input-bordered"
-                    required
-                    bind:value={description}
-                />
+                <div class="flex flex-col gap-2 mt-2">
+                    <label class="label" for="description">Description</label>
+                    <input
+                        type="text"
+                        id="description"
+                        class="input input-bordered"
+                        required
+                        bind:value={description}
+                    />
+                </div>
             </div>
             <div class="grid grid-cols-2 gap-4 mt-4">
                 <!-- Device A Searchable Select -->
