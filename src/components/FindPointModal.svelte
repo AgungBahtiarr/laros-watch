@@ -36,11 +36,27 @@
             distance = "";
         }
     });
+
+    let dialog: HTMLDialogElement;
+
+    $effect(() => {
+        if (dialog) {
+            if (isOpen) {
+                dialog.showModal();
+            } else {
+                dialog.close();
+            }
+        }
+    });
 </script>
 
-{#if isOpen && connection}
-    <div class="modal modal-open">
-        <div class="modal-box">
+{#if connection}
+    <dialog
+        bind:this={dialog}
+        onclose={onClose}
+        class="modal modal-bottom sm:modal-middle"
+    >
+        <div class="modal-box w-full max-w-lg">
             <h3 class="font-bold text-lg">Find Point on Route</h3>
             <form onsubmit={handleSubmit}>
                 <div class="form-control">
@@ -84,5 +100,8 @@
                 </div>
             </form>
         </div>
-    </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
 {/if}

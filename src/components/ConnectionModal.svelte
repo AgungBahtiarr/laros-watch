@@ -157,7 +157,8 @@
         odpPathArray = odpPathArray;
     }
 
-    function handleSubmit() {
+    function handleSubmit(e) {
+        e.preventDefault();
         // 1. Basic validation
         if (!deviceAId || !portAId || !deviceBId || !portBId || !description) {
             alert(
@@ -252,355 +253,354 @@
             odpPathArray = [];
         }
     });
+
+    let dialog: HTMLDialogElement;
+
+    $effect(() => {
+        if (dialog) {
+            if (isOpen) {
+                dialog.showModal();
+            } else {
+                dialog.close();
+            }
+        }
+    });
 </script>
 
 <svelte:window onclick={handleClickOutside} />
 
-{#if isOpen}
-    <div class="modal modal-open">
-        <div class="modal-box w-11/12 max-w-2xl">
-            <h3 class="font-bold text-lg">
-                {isEdit ? "Edit" : "Add New"} Connection
-            </h3>
-            <form onsubmit={handleSubmit}>
+<dialog
+    bind:this={dialog}
+    onclose={onClose}
+    class="modal modal-bottom sm:modal-middle"
+>
+    <div class="modal-box w-full max-w-2xl">
+        <h3 class="font-bold text-lg">
+            {isEdit ? "Edit" : "Add New"} Connection
+        </h3>
+        <form onsubmit={handleSubmit}>
+            <div class="form-control">
+                <label class="label" for="description">Description</label>
+                <input
+                    type="text"
+                    id="description"
+                    class="input input-bordered"
+                    required
+                    bind:value={description}
+                />
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <!-- Device A Searchable Select -->
                 <div class="form-control">
-                    <label class="label" for="description">Description</label>
-                    <input
-                        type="text"
-                        id="description"
-                        class="input input-bordered"
-                        required
-                        bind:value={description}
-                    />
-                </div>
-                <div class="grid grid-cols-2 gap-4 mt-4">
-                    <!-- Device A Searchable Select -->
-                    <div class="form-control">
-                        <label class="label">Device A</label>
-                        <div class="searchable-select relative">
-                            <div
-                                class="select select-bordered w-full cursor-pointer flex items-center justify-between"
-                                class:select-disabled={deviceAId === ""}
-                                onclick={() => {
-                                    deviceAOpen = !deviceAOpen;
-                                    if (deviceAOpen) deviceASearch = "";
-                                }}
+                    <label class="label">Device A</label>
+                    <div class="searchable-select relative">
+                        <div
+                            class="select select-bordered w-full cursor-pointer flex items-center justify-between"
+                            class:select-disabled={deviceAId === ""}
+                            onclick={() => {
+                                deviceAOpen = !deviceAOpen;
+                                if (deviceAOpen) deviceASearch = "";
+                            }}
+                        >
+                            <span class:text-gray-400={!deviceAId}
+                                >{deviceAName}</span
                             >
-                                <span class:text-gray-400={!deviceAId}
-                                    >{deviceAName}</span
-                                >
-                                <svg
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M19 9l-7 7-7-7"
-                                    ></path>
-                                </svg>
-                            </div>
-                            {#if deviceAOpen}
-                                <div
-                                    class="absolute top-full left-0 right-0 z-50 bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
-                                >
-                                    <div class="p-2 border-b">
-                                        <input
-                                            type="text"
-                                            placeholder="Search devices..."
-                                            class="input input-sm input-bordered w-full"
-                                            bind:value={deviceASearch}
-                                            onclick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    <div class="max-h-48 overflow-y-auto">
-                                        {#each filteredNodesA as node}
-                                            <div
-                                                class="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                                                onclick={() =>
-                                                    selectDeviceA(node)}
-                                            >
-                                                {node.name}
-                                            </div>
-                                        {/each}
-                                        {#if filteredNodesA.length === 0}
-                                            <div
-                                                class="px-3 py-2 text-gray-500"
-                                            >
-                                                No devices found
-                                            </div>
-                                        {/if}
-                                    </div>
-                                </div>
-                            {/if}
-                        </div>
-                    </div>
-
-                    <!-- Port A Searchable Select -->
-                    <div class="form-control">
-                        <label class="label">Port A</label>
-                        <div class="searchable-select relative">
-                            <div
-                                class="select select-bordered w-full cursor-pointer flex items-center justify-between"
-                                class:select-disabled={!portsA.length}
-                                onclick={() => {
-                                    if (portsA.length) {
-                                        portAOpen = !portAOpen;
-                                        if (portAOpen) portASearch = "";
-                                    }
-                                }}
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                             >
-                                <span class:text-gray-400={!portAId}
-                                    >{portAName}</span
-                                >
-                                <svg
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M19 9l-7 7-7-7"
-                                    ></path>
-                                </svg>
-                            </div>
-                            {#if portAOpen && portsA.length}
-                                <div
-                                    class="absolute top-full left-0 right-0 z-50 bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
-                                >
-                                    <div class="p-2 border-b">
-                                        <input
-                                            type="text"
-                                            placeholder="Search ports..."
-                                            class="input input-sm input-bordered w-full"
-                                            bind:value={portASearch}
-                                            onclick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    <div class="max-h-48 overflow-y-auto">
-                                        {#each filteredPortsA as iface}
-                                            <div
-                                                class="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                                                onclick={() =>
-                                                    selectPortA(iface)}
-                                            >
-                                                {iface.ifName} ({iface.ifDescr})
-                                            </div>
-                                        {/each}
-                                        {#if filteredPortsA.length === 0}
-                                            <div
-                                                class="px-3 py-2 text-gray-500"
-                                            >
-                                                No ports found
-                                            </div>
-                                        {/if}
-                                    </div>
-                                </div>
-                            {/if}
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 9l-7 7-7-7"
+                                ></path>
+                            </svg>
                         </div>
-                    </div>
-
-                    <!-- Device B Searchable Select -->
-                    <div class="form-control">
-                        <label class="label">Device B</label>
-                        <div class="searchable-select relative">
+                        {#if deviceAOpen}
                             <div
-                                class="select select-bordered w-full cursor-pointer flex items-center justify-between"
-                                class:select-disabled={deviceBId === ""}
-                                onclick={() => {
-                                    deviceBOpen = !deviceBOpen;
-                                    if (deviceBOpen) deviceBSearch = "";
-                                }}
+                                class="absolute top-full left-0 right-0 z-50 bg-base-100 border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
                             >
-                                <span class:text-gray-400={!deviceBId}
-                                    >{deviceBName}</span
-                                >
-                                <svg
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M19 9l-7 7-7-7"
-                                    ></path>
-                                </svg>
-                            </div>
-                            {#if deviceBOpen}
-                                <div
-                                    class="absolute top-full left-0 right-0 z-50 bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
-                                >
-                                    <div class="p-2 border-b">
-                                        <input
-                                            type="text"
-                                            placeholder="Search devices..."
-                                            class="input input-sm input-bordered w-full"
-                                            bind:value={deviceBSearch}
-                                            onclick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    <div class="max-h-48 overflow-y-auto">
-                                        {#each filteredNodesB as node}
-                                            <div
-                                                class="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                                                onclick={() =>
-                                                    selectDeviceB(node)}
-                                            >
-                                                {node.name}
-                                            </div>
-                                        {/each}
-                                        {#if filteredNodesB.length === 0}
-                                            <div
-                                                class="px-3 py-2 text-gray-500"
-                                            >
-                                                No devices found
-                                            </div>
-                                        {/if}
-                                    </div>
+                                <div class="p-2 border-b">
+                                    <input
+                                        type="text"
+                                        placeholder="Search devices..."
+                                        class="input input-sm input-bordered w-full"
+                                        bind:value={deviceASearch}
+                                        onclick={(e) => e.stopPropagation()}
+                                    />
                                 </div>
-                            {/if}
-                        </div>
-                    </div>
-
-                    <!-- Port B Searchable Select -->
-                    <div class="form-control">
-                        <label class="label">Port B</label>
-                        <div class="searchable-select relative">
-                            <div
-                                class="select select-bordered w-full cursor-pointer flex items-center justify-between"
-                                class:select-disabled={!portsB.length}
-                                onclick={() => {
-                                    if (portsB.length) {
-                                        portBOpen = !portBOpen;
-                                        if (portBOpen) portBSearch = "";
-                                    }
-                                }}
-                            >
-                                <span class:text-gray-400={!portBId}
-                                    >{portBName}</span
-                                >
-                                <svg
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M19 9l-7 7-7-7"
-                                    ></path>
-                                </svg>
-                            </div>
-                            {#if portBOpen && portsB.length}
-                                <div
-                                    class="absolute top-full left-0 right-0 z-50 bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
-                                >
-                                    <div class="p-2 border-b">
-                                        <input
-                                            type="text"
-                                            placeholder="Search ports..."
-                                            class="input input-sm input-bordered w-full"
-                                            bind:value={portBSearch}
-                                            onclick={(e) => e.stopPropagation()}
-                                        />
-                                    </div>
-                                    <div class="max-h-48 overflow-y-auto">
-                                        {#each filteredPortsB as iface}
-                                            <div
-                                                class="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                                                onclick={() =>
-                                                    selectPortB(iface)}
-                                            >
-                                                {iface.ifName} ({iface.ifDescr})
-                                            </div>
-                                        {/each}
-                                        {#if filteredPortsB.length === 0}
-                                            <div
-                                                class="px-3 py-2 text-gray-500"
-                                            >
-                                                No ports found
-                                            </div>
-                                        {/if}
-                                    </div>
+                                <div class="max-h-48 overflow-y-auto">
+                                    {#each filteredNodesA as node}
+                                        <div
+                                            class="px-3 py-2 hover:bg-base-200 cursor-pointer"
+                                            onclick={() => selectDeviceA(node)}
+                                        >
+                                            {node.name}
+                                        </div>
+                                    {/each}
+                                    {#if filteredNodesA.length === 0}
+                                        <div class="px-3 py-2 text-gray-500">
+                                            No devices found
+                                        </div>
+                                    {/if}
                                 </div>
-                            {/if}
-                        </div>
+                            </div>
+                        {/if}
                     </div>
                 </div>
-                <div class="form-control mt-4">
-                    <label class="label" for="odp-path-select">
-                        <span class="label-text">ODP Path</span>
-                    </label>
-                    <div class="flex items-center gap-2">
-                        <select
-                            id="odp-path-select"
-                            class="select select-bordered w-full max-w-xs"
-                            bind:value={selectedOdpId}
+
+                <!-- Port A Searchable Select -->
+                <div class="form-control">
+                    <label class="label">Port A</label>
+                    <div class="searchable-select relative">
+                        <div
+                            class="select select-bordered w-full cursor-pointer flex items-center justify-between"
+                            class:select-disabled={!portsA.length}
+                            onclick={() => {
+                                if (portsA.length) {
+                                    portAOpen = !portAOpen;
+                                    if (portAOpen) portASearch = "";
+                                }
+                            }}
                         >
-                            <option disabled selected value=""
-                                >Select ODP</option
+                            <span class:text-gray-400={!portAId}
+                                >{portAName}</span
                             >
-                            {#each odps as odp}
-                                <option value={odp.id}>{odp.name}</option>
-                            {/each}
-                        </select>
-                        <button
-                            type="button"
-                            class="btn btn-secondary"
-                            onclick={addOdpToPath}>Add</button
-                        >
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 9l-7 7-7-7"
+                                ></path>
+                            </svg>
+                        </div>
+                        {#if portAOpen && portsA.length}
+                            <div
+                                class="absolute top-full left-0 right-0 z-50 bg-base-100 border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
+                            >
+                                <div class="p-2 border-b">
+                                    <input
+                                        type="text"
+                                        placeholder="Search ports..."
+                                        class="input input-sm input-bordered w-full"
+                                        bind:value={portASearch}
+                                        onclick={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                                <div class="max-h-48 overflow-y-auto">
+                                    {#each filteredPortsA as iface}
+                                        <div
+                                            class="px-3 py-2 hover:bg-base-200 cursor-pointer"
+                                            onclick={() => selectPortA(iface)}
+                                        >
+                                            {iface.ifName} ({iface.ifDescr})
+                                        </div>
+                                    {/each}
+                                    {#if filteredPortsA.length === 0}
+                                        <div class="px-3 py-2 text-gray-500">
+                                            No ports found
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+                        {/if}
                     </div>
-                    <div
-                        class="mt-2 flex min-h-[40px] flex-wrap gap-2 rounded-lg bg-base-200 p-2"
+                </div>
+
+                <!-- Device B Searchable Select -->
+                <div class="form-control">
+                    <label class="label">Device B</label>
+                    <div class="searchable-select relative">
+                        <div
+                            class="select select-bordered w-full cursor-pointer flex items-center justify-between"
+                            class:select-disabled={deviceBId === ""}
+                            onclick={() => {
+                                deviceBOpen = !deviceBOpen;
+                                if (deviceBOpen) deviceBSearch = "";
+                            }}
+                        >
+                            <span class:text-gray-400={!deviceBId}
+                                >{deviceBName}</span
+                            >
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 9l-7 7-7-7"
+                                ></path>
+                            </svg>
+                        </div>
+                        {#if deviceBOpen}
+                            <div
+                                class="absolute top-full left-0 right-0 z-50 bg-base-100 border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
+                            >
+                                <div class="p-2 border-b">
+                                    <input
+                                        type="text"
+                                        placeholder="Search devices..."
+                                        class="input input-sm input-bordered w-full"
+                                        bind:value={deviceBSearch}
+                                        onclick={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                                <div class="max-h-48 overflow-y-auto">
+                                    {#each filteredNodesB as node}
+                                        <div
+                                            class="px-3 py-2 hover:bg-base-200 cursor-pointer"
+                                            onclick={() => selectDeviceB(node)}
+                                        >
+                                            {node.name}
+                                        </div>
+                                    {/each}
+                                    {#if filteredNodesB.length === 0}
+                                        <div class="px-3 py-2 text-gray-500">
+                                            No devices found
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
+                </div>
+
+                <!-- Port B Searchable Select -->
+                <div class="form-control">
+                    <label class="label">Port B</label>
+                    <div class="searchable-select relative">
+                        <div
+                            class="select select-bordered w-full cursor-pointer flex items-center justify-between"
+                            class:select-disabled={!portsB.length}
+                            onclick={() => {
+                                if (portsB.length) {
+                                    portBOpen = !portBOpen;
+                                    if (portBOpen) portBSearch = "";
+                                }
+                            }}
+                        >
+                            <span class:text-gray-400={!portBId}
+                                >{portBName}</span
+                            >
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 9l-7 7-7-7"
+                                ></path>
+                            </svg>
+                        </div>
+                        {#if portBOpen && portsB.length}
+                            <div
+                                class="absolute top-full left-0 right-0 z-50 bg-base-100 border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
+                            >
+                                <div class="p-2 border-b">
+                                    <input
+                                        type="text"
+                                        placeholder="Search ports..."
+                                        class="input input-sm input-bordered w-full"
+                                        bind:value={portBSearch}
+                                        onclick={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                                <div class="max-h-48 overflow-y-auto">
+                                    {#each filteredPortsB as iface}
+                                        <div
+                                            class="px-3 py-2 hover:bg-base-200 cursor-pointer"
+                                            onclick={() => selectPortB(iface)}
+                                        >
+                                            {iface.ifName} ({iface.ifDescr})
+                                        </div>
+                                    {/each}
+                                    {#if filteredPortsB.length === 0}
+                                        <div class="px-3 py-2 text-gray-500">
+                                            No ports found
+                                        </div>
+                                    {/if}
+                                </div>
+                            </div>
+                        {/if}
+                    </div>
+                </div>
+            </div>
+            <div class="form-control mt-4">
+                <label class="label" for="odp-path-select">
+                    <span class="label-text">ODP Path</span>
+                </label>
+                <div class="flex items-center gap-2">
+                    <select
+                        id="odp-path-select"
+                        class="select select-bordered w-full max-w-xs"
+                        bind:value={selectedOdpId}
                     >
-                        {#each odpPathArray as odp, i}
-                            <div class="badge badge-lg badge-outline gap-2">
-                                <span>{odp.name}</span>
-                                <button
-                                    type="button"
-                                    class="btn btn-xs btn-ghost"
-                                    onclick={() => removeOdpFromPath(i)}
-                                    aria-label="Remove ODP from path"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        class="inline-block h-4 w-4 stroke-current"
-                                        ><path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M6 18L18 6M6 6l12 12"
-                                        ></path></svg
-                                    >
-                                </button>
-                            </div>
+                        <option disabled selected value="">Select ODP</option>
+                        {#each odps as odp}
+                            <option value={odp.id}>{odp.name}</option>
                         {/each}
-                    </div>
-                </div>
-                <div class="modal-action">
-                    <button type="button" class="btn" onclick={onClose}
-                        >Cancel</button
-                    >
+                    </select>
                     <button
                         type="button"
-                        class="btn btn-primary"
-                        onclick={handleSubmit}>Save</button
+                        class="btn btn-secondary"
+                        onclick={addOdpToPath}>Add</button
                     >
                 </div>
-            </form>
-        </div>
+                <div
+                    class="mt-2 flex min-h-[40px] flex-wrap gap-2 rounded-lg bg-base-200 p-2"
+                >
+                    {#each odpPathArray as odp, i}
+                        <div class="badge badge-lg badge-outline gap-2">
+                            <span>{odp.name}</span>
+                            <button
+                                type="button"
+                                class="btn btn-xs btn-ghost"
+                                onclick={() => removeOdpFromPath(i)}
+                                aria-label="Remove ODP from path"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    class="inline-block h-4 w-4 stroke-current"
+                                    ><path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M6 18L18 6M6 6l12 12"
+                                    ></path></svg
+                                >
+                            </button>
+                        </div>
+                    {/each}
+                </div>
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn" onclick={onClose}
+                    >Cancel</button
+                >
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
     </div>
-{/if}
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
