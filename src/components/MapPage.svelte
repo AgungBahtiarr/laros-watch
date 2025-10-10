@@ -750,6 +750,25 @@
         <div class="toast toast-top toast-center z-50">
             <div class="alert alert-info">
                 <span>Click on the map to place the new ODP.</span>
+                <button
+                    class="btn btn-sm btn-ghost"
+                    onclick={() => (isAddingOdpMode = false)}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M6 18L18 6M6 6l12 12"
+                        />
+                    </svg>
+                </button>
             </div>
         </div>
     {/if}
@@ -758,33 +777,41 @@
         {@const editingConnection = connections.find(
             (c) => c.id === editingConnectionId,
         )}
-        <div
-            class="sticky top-16 left-1/2 -translate-x-1/2 bg-warning text-warning-content p-3 rounded-lg shadow-lg z-40 flex items-center gap-4 w-max"
-        >
-            <div class="flex flex-col">
-                <div class="flex items-center gap-2">
-                    <span class="font-semibold">Route Edit Mode Active</span>
-                    {#if dirtyOdps.size > 0}
-                        <span class="badge badge-error badge-sm">
-                            {dirtyOdps.size} unsaved changes
-                        </span>
-                    {/if}
-                </div>
+        <div class="toast toast-top toast-center z-50">
+            <div class="alert alert-warning">
+                <div
+                    class="flex w-full flex-col items-center gap-2 sm:flex-row"
+                >
+                    <div class="flex flex-col">
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold"
+                                >Route Edit Mode Active</span
+                            >
+                            {#if dirtyOdps.size > 0}
+                                <span class="badge badge-error badge-sm">
+                                    {dirtyOdps.size} unsaved changes
+                                </span>
+                            {/if}
+                        </div>
 
-                {#if editingConnection?.odpPath && editingConnection.odpPath.length > 0}
-                    <span class="text-xs opacity-75">
-                        Yellow pins can be dragged to reposition ODPs in
-                        sequence
-                    </span>
-                {/if}
-            </div>
-            <div class="flex gap-2">
-                <button class="btn btn-sm btn-error" onclick={cancelEditing}
-                    >Cancel</button
-                >
-                <button class="btn btn-sm btn-primary" onclick={finishEditing}
-                    >Finish Editing</button
-                >
+                        {#if editingConnection?.odpPath && editingConnection.odpPath.length > 0}
+                            <span class="text-xs opacity-75">
+                                Yellow pins can be dragged to reposition ODPs in
+                                sequence
+                            </span>
+                        {/if}
+                    </div>
+                    <div class="flex gap-2">
+                        <button
+                            class="btn btn-sm btn-error"
+                            onclick={cancelEditing}>Cancel</button
+                        >
+                        <button
+                            class="btn btn-sm btn-primary"
+                            onclick={finishEditing}>Finish Editing</button
+                        >
+                    </div>
+                </div>
             </div>
         </div>
     {/if}
