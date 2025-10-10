@@ -68,47 +68,64 @@
             }
         }
     });
+
+    let dialog: HTMLDialogElement;
+
+    $effect(() => {
+        if (dialog) {
+            if (isOpen) {
+                dialog.showModal();
+            } else {
+                dialog.close();
+            }
+        }
+    });
 </script>
 
-{#if isOpen}
-    <div class="modal modal-open">
-        <div class="modal-box">
-            <h3 class="font-bold text-lg">{isEdit ? "Edit" : "Add"} ODP</h3>
-            <form onsubmit={handleSubmit}>
-                <div class="form-control">
-                    <label class="label" for="odpName">Name</label>
-                    <input
-                        type="text"
-                        id="odpName"
-                        class="input input-bordered"
-                        required
-                        bind:value={name}
-                    />
-                </div>
-                <div class="form-control mt-4">
-                    <label class="label" for="odpLocation">Location</label>
-                    <input
-                        type="text"
-                        id="odpLocation"
-                        class="input input-bordered"
-                        bind:value={location}
-                    />
-                </div>
-                <div class="form-control mt-4">
-                    <label class="label" for="odpNotes">Notes</label>
-                    <textarea
-                        id="odpNotes"
-                        class="textarea textarea-bordered"
-                        bind:value={notes}
-                    ></textarea>
-                </div>
-                <div class="modal-action">
-                    <button type="button" class="btn" onclick={onClose}
-                        >Cancel</button
-                    >
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
+<dialog
+    bind:this={dialog}
+    onclose={onClose}
+    class="modal modal-bottom sm:modal-middle"
+>
+    <div class="modal-box w-full max-w-lg">
+        <h3 class="font-bold text-lg">{isEdit ? "Edit" : "Add"} ODP</h3>
+        <form onsubmit={handleSubmit}>
+            <div class="form-control">
+                <label class="label" for="odpName">Name</label>
+                <input
+                    type="text"
+                    id="odpName"
+                    class="input input-bordered"
+                    required
+                    bind:value={name}
+                />
+            </div>
+            <div class="form-control mt-4">
+                <label class="label" for="odpLocation">Location</label>
+                <input
+                    type="text"
+                    id="odpLocation"
+                    class="input input-bordered"
+                    bind:value={location}
+                />
+            </div>
+            <div class="form-control mt-4">
+                <label class="label" for="odpNotes">Notes</label>
+                <textarea
+                    id="odpNotes"
+                    class="textarea textarea-bordered"
+                    bind:value={notes}
+                ></textarea>
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn" onclick={onClose}
+                    >Cancel</button
+                >
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
     </div>
-{/if}
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
