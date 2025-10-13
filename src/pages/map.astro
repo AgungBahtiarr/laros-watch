@@ -9,10 +9,24 @@ const osrmApiUrl = import.meta.env.PUBLIC_OSRM_API_URL;
 const graphhopperApiUrl = import.meta.env.PUBLIC_GRAPHHOPPER_URL;
 
 // Fetch nodes and connections
+const token = Astro.cookies.get("authToken");
+
 const [nodesResponse, connectionsResponse, odpsResponse] = await Promise.all([
-    fetch(`${apiBaseUrl}/api/nodes`),
-    fetch(`${apiBaseUrl}/api/nodes/connections`),
-    fetch(`${apiBaseUrl}/api/nodes/odp`),
+    fetch(`${apiBaseUrl}/api/nodes`, {
+        headers: {
+            Authorization: `Basic ${token?.value}`,
+        },
+    }),
+    fetch(`${apiBaseUrl}/api/nodes/connections`, {
+        headers: {
+            Authorization: `Basic ${token?.value}`,
+        },
+    }),
+    fetch(`${apiBaseUrl}/api/nodes/odp`, {
+        headers: {
+            Authorization: `Basic ${token?.value}`,
+        },
+    }),
 ]);
 
 const nodes: Node[] = await nodesResponse.json();
@@ -56,5 +70,6 @@ for (const group of connectionGroups.values()) {
         osrmApiUrl={osrmApiUrl}
         graphhopperApiUrl={graphhopperApiUrl}
         odps={odps}
+        token={token?.value}
     />
 </Layout>

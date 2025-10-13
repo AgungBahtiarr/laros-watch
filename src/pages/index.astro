@@ -7,8 +7,14 @@ import NodeCard from "../components/NodeCard.astro";
 
 let nodes: Node[] = [];
 try {
+    const token = Astro.cookies.get("authToken");
     const response = await fetch(
         `${import.meta.env.PUBLIC_API_BASE_URL}/api/nodes`,
+        {
+            headers: {
+                Authorization: `Basic ${token?.value}`,
+            },
+        },
     );
     if (response.ok) {
         nodes = await response.json();

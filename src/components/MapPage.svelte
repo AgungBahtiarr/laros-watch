@@ -28,6 +28,7 @@
         apiBaseUrl: string;
         osrmApiUrl: string;
         graphhopperApiUrl: string;
+        token: string;
     };
 
     const {
@@ -38,6 +39,7 @@
         apiBaseUrl,
         osrmApiUrl,
         graphhopperApiUrl,
+        token,
     } = $props<Props>();
 
     let map: L.Map;
@@ -550,7 +552,10 @@
                 };
                 return fetch(`${apiBaseUrl}/api/nodes/odp/${odpId}`, {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Basic ${token}`,
+                    },
                     body: JSON.stringify(payload),
                 });
             },
@@ -594,6 +599,7 @@
         if (confirm("Are you sure?")) {
             await fetch(`${apiBaseUrl}/api/nodes/connections/${connId}`, {
                 method: "DELETE",
+                headers: { Authorization: `Basic ${token}` },
             });
             location.reload();
         }
@@ -655,7 +661,10 @@
         try {
             const response = await fetch(url, {
                 method,
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Basic ${token}`,
+                },
                 body: JSON.stringify(payload),
             });
             if (!response.ok) {
@@ -676,7 +685,10 @@
         try {
             const r = await fetch(url, {
                 method,
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Basic ${token}`,
+                },
                 body: JSON.stringify(odp),
             });
             if (!r.ok) {
@@ -693,6 +705,9 @@
             try {
                 const r = await fetch(`${apiBaseUrl}/api/nodes/odp/${odpId}`, {
                     method: "DELETE",
+                    headers: {
+                        Authorization: `Basic ${token}`,
+                    },
                 });
                 if (!r.ok) {
                     throw new Error(await r.text());
@@ -928,6 +943,7 @@
     {odps}
     onSave={handleSaveConnection}
     onClose={() => (showConnectionModal = false)}
+    {token}
 />
 <FindPointModal
     isOpen={showFindPointModal}
@@ -943,6 +959,7 @@
     latlng={newOdpLatLng}
     onSave={handleSaveOdp}
     onClose={() => (showOdpModal = false)}
+    {token}
 />
 
 <style>

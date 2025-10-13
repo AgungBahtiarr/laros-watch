@@ -1,0 +1,84 @@
+---
+import LoginLayout from "../layouts/LoginLayout.astro";
+
+let errorMessage = "";
+if (Astro.request.method === "POST") {
+    try {
+        const formData = await Astro.request.formData();
+        const username = formData.get("username") as string;
+        const password = formData.get("password") as string;
+
+        const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL;
+        const token = btoa(`${username}:${password}`);
+
+        const response = await fetch(`${apiBaseUrl}/api/users/login`, {
+            method: "POST",
+            headers: {
+                Authorization: `Basic ${token}`,
+            },
+        });
+
+        if (response.ok) {
+            Astro.cookies.set("authToken", token, {
+                httpOnly: true,
+                path: "/",
+                maxAge: 60 * 60 * 24 * 7, // 1 week
+            });
+            console.log(token);
+            return Astro.redirect("/");
+        } else {
+            errorMessage =
+                "Login failed. Please check your username and password.";
+        }
+    } catch (error) {
+        console.error(error);
+        errorMessage = "An error occurred during login.";
+    }
+}
+---
+
+<LoginLayout title="Login">
+    <main class="flex justify-center items-center h-screen">
+        <div class="card w-96 bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">Login</h2>
+                <form method="POST">
+                    <div class="form-control">
+                        <label class="label" for="username">
+                            <span class="label-text">Username</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            class="input input-bordered"
+                            required
+                        />
+                    </div>
+                    <div class="form-control">
+                        <label class="label" for="password">
+                            <span class="label-text">Password</span>
+                        </label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="input input-bordered"
+                            required
+                        />
+                    </div>
+                    <div class="form-control mt-6">
+                        <button type="submit" class="btn btn-primary"
+                            >Login</button
+                        >
+                    </div>
+                </form>
+                {
+                    errorMessage && (
+                        <div class="text-red-500 mt-4">{errorMessage}</div>
+                    )
+                }
+            </div>
+        </div>
+    </main>
+</LoginLayout>

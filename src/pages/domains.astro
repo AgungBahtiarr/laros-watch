@@ -4,8 +4,14 @@ import type { Domain } from "../types";
 
 let domains: Domain[] = [];
 try {
+    const token = Astro.cookies.get("authToken");
     const response = await fetch(
         `${import.meta.env.PUBLIC_API_BASE_URL}/api/domains`,
+        {
+            headers: {
+                Authorization: `Basic ${token?.value}`,
+            },
+        },
     );
     if (response.ok) {
         domains = await response.json();
