@@ -16,4 +16,4 @@ COPY --from=builder /usr/src/app/dist/ ./
 
 EXPOSE 4321
 
-CMD ["node" ,"./dist/server/entry.mjs" ]
+CMD [ "node", "server/entry.mjs" ]
