@@ -1,0 +1,14 @@
+---
+// This page handles the logout action based on a POST request.
+if (Astro.request.method === "POST") {
+    // The HttpOnly cookie can only be deleted from the server-side.
+    Astro.cookies.delete('authToken', { path: '/' });
+    // Redirect the user to the login page after deleting the cookie.
+    return Astro.redirect('/login');
+}
+
+// If a user tries to access /logout via a GET request, just send them to the homepage.
+return Astro.redirect('/');
+---
+
+<!-- This page has no visible content. It is only for processing the logout action. -->

@@ -5,12 +5,9 @@ import SummaryStats from "../components/SummaryStats.astro";
 import FilterControls from "../components/FilterControls.astro";
 import NodeCard from "../components/NodeCard.astro";
 
-// The layout should handle the redirect if the token is missing.
-// This page will handle the case where the token is present but invalid.
 const token = Astro.cookies.get("authToken");
 
 let nodes: Node[] = [];
-// Only fetch if the token exists, as a safeguard.
 if (token) {
     try {
         const response = await fetch(
@@ -24,13 +21,11 @@ if (token) {
 
         if (response.ok) {
             nodes = await response.json();
-        } else if (response.status === 401) {
-            // Token is invalid or expired, redirect to login.
-            return Astro.redirect("/login");
+        } else {
+            console.error(`Failed to fetch nodes. Status: ${response.status}`);
         }
     } catch (error) {
         console.error("Failed to fetch nodes:", error);
-        // Optionally render an error state on the page
     }
 }
 
