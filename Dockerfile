@@ -6,7 +6,7 @@ RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build
 
-FROM oven/bun:latest-slim as production
+FROM oven/bun:latest as production
 WORKDIR /app
 
 COPY --from=builder /usr/src/app/package.json /usr/src/app/bun.lock* ./
