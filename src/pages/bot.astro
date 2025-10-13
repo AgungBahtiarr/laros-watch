@@ -1,32 +1,43 @@
 ---
 import Layout from "../layouts/Layout.astro";
 
-const containerName = "gowa-yk4okkwc0c48wwg8c0c4ss8c";
-const dockerApiUrl = import.meta.env.PUBLIC_DOKCER_API_URL;
-const logsUrl = `${dockerApiUrl}/containers/${containerName}/logs?stdout=true&stderr=true&timestamps=true&tail=100`;
-
-let logs = "Loading logs...";
-let error = null;
-
-try {
-    const response = await fetch(logsUrl);
-    if (response.ok) {
+// Helper function to fetch and parse logs to avoid repetition
+const getDockerLogs = async (containerName: string) => {
+    const dockerApiUrl = import.meta.env.PUBLIC_DOKCER_API_URL;
+    const logsUrl = `${dockerApiUrl}/containers/${containerName}/logs?stdout=true&stderr=true&timestamps=true&tail=100`;
+    try {
+        const response = await fetch(logsUrl);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed: ${response.status} - ${errorText}`);
+        }
         const rawLogs = await response.text();
-        logs = rawLogs.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
-    } else {
-        const errorText = await response.text();
-        throw new Error(
-            `Failed to fetch logs: ${response.status} ${response.statusText} - ${errorText}`,
-        );
+        // Regex to strip Docker's 8-byte header from each log line without removing actual newlines
+        const logs = rawLogs
+            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+            .trim();
+        return { logs, error: null };
+    } catch (e: any) {
+        return {
+            logs: `Could not load logs for ${containerName}.`,
+            error: e.message,
+        };
     }
-} catch (e: any) {
-    error = e.message;
-    logs = "Could not load logs.";
-}
+};
+
+const waContainerName = "gowa-yk4okkwc0c48wwg8c0c4ss8c";
+const apiContainerName = "rkkkso0c4ssg0ks4kwoowsoc-045721191029";
+
+// Fetch both logs in parallel for better performance
+const [waResult, apiResult] = await Promise.all([
+    getDockerLogs(waContainerName),
+    getDockerLogs(apiContainerName),
+]);
 ---
 
-<Layout title="Bot Monitor">
-    <div class="p-4 sm:p-6">
+<Layout title="Bot & API Monitor">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-6">
+        <!-- WA Gateway Logs Card -->
         <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
                 <div class="flex justify-between items-center">
@@ -36,47 +47,65 @@ try {
                             class="btn btn-secondary btn-sm"
                             id="reconnect-btn">Reconnect</button
                         >
-                        <a href="/bot" class="btn btn-primary btn-sm"
-                            >Refresh Logs</a
+                        <a href="/bot" class="btn btn-primary btn-sm">Refresh</a
                         >
                     </div>
                 </div>
                 <div class="divider"></div>
                 {
-                    error && (
+                    waResult.error && (
                         <div class="alert alert-error">
-                            <div>
-                                <span>{error}</span>
-                            </div>
+                            <span>{waResult.error}</span>
                         </div>
                     )
                 }
-                <div
-                    class="bg-base-300 rounded-lg p-4 max-h-screen overflow-y-auto"
-                >
-                    <pre class="text-xs whitespace-pre-wrap">{logs}</pre>
+                <div class="bg-base-300 rounded-lg p-4 h-96 overflow-y-auto">
+                    <pre
+                        class="text-xs whitespace-pre-wrap">{waResult.logs}</pre>
                 </div>
             </div>
         </div>
 
-        <!-- QR Code Modal -->
-        <dialog id="qr_modal" class="modal">
-            <div class="modal-box">
-                <h3 class="font-bold text-lg">Scan to Reconnect WhatsApp</h3>
-                <div
-                    id="qr-container"
-                    class="py-4 text-center min-h-[200px] flex items-center justify-center"
-                >
-                    <span class="loading loading-spinner loading-lg"></span>
+        <!-- API Logs Card -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <div class="flex justify-between items-center">
+                    <h2 class="card-title">API Logs</h2>
+                    <a href="/bot" class="btn btn-primary btn-sm">Refresh</a>
                 </div>
-                <div class="modal-action">
-                    <form method="dialog">
-                        <button class="btn">Close</button>
-                    </form>
+                <div class="divider"></div>
+                {
+                    apiResult.error && (
+                        <div class="alert alert-error">
+                            <span>{apiResult.error}</span>
+                        </div>
+                    )
+                }
+                <div class="bg-base-300 rounded-lg p-4 h-96 overflow-y-auto">
+                    <pre
+                        class="text-xs whitespace-pre-wrap">{apiResult.logs}</pre>
                 </div>
             </div>
-        </dialog>
+        </div>
     </div>
+
+    <!-- QR Code Modal (for WA Gateway) -->
+    <dialog id="qr_modal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Scan to Reconnect WhatsApp</h3>
+            <div
+                id="qr-container"
+                class="py-4 text-center min-h-[200px] flex items-center justify-center"
+            >
+                <span class="loading loading-spinner loading-lg"></span>
+            </div>
+            <div class="modal-action">
+                <form method="dialog">
+                    <button class="btn">Close</button>
+                </form>
+            </div>
+        </div>
+    </dialog>
 </Layout>
 
 <script>
@@ -85,7 +114,6 @@ try {
     const qrContainer = document.getElementById("qr-container");
 
     reconnectBtn.addEventListener("click", async () => {
-        // Show modal and reset to loading state
         qrModal.showModal();
         qrContainer.innerHTML =
             '<span class="loading loading-spinner loading-lg"></span>';
