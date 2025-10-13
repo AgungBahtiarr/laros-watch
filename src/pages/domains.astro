@@ -3,8 +3,9 @@ import Layout from "../layouts/Layout.astro";
 import type { Domain } from "../types";
 
 let domains: Domain[] = [];
+const token = Astro.cookies.get("authToken");
+const apiUrl = import.meta.env.PUBLIC_API_BASE_URL;
 try {
-    const token = Astro.cookies.get("authToken");
     const response = await fetch(
         `${import.meta.env.PUBLIC_API_BASE_URL}/api/domains`,
         {
@@ -284,7 +285,7 @@ function formatDate(dateString: string) {
     </main>
 </Layout>
 
-<script>
+<script define:vars={{ token, apiUrl }}>
     function initAddDomainForm() {
         const form = document.getElementById("addDomainForm");
         if (!form) return;
@@ -300,16 +301,14 @@ function formatDate(dateString: string) {
             }
 
             try {
-                const response = await fetch(
-                    `${import.meta.env.PUBLIC_API_BASE_URL}/api/domains`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ name: domainName }),
+                const response = await fetch(`${apiUrl}/api/domains`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Basic ${token?.value}`,
                     },
-                );
+                    body: JSON.stringify({ name: domainName }),
+                });
 
                 if (response.ok) {
                     add_domain_modal.close();
@@ -383,9 +382,12 @@ function formatDate(dateString: string) {
 
             try {
                 const response = await fetch(
-                    `${import.meta.env.PUBLIC_API_BASE_URL}/api/domains/${domainIdToDelete}`,
+                    `${apiUrl}/api/domains/${domainIdToDelete}`,
                     {
                         method: "DELETE",
+                        headers: {
+                            Authorization: `Basic ${token?.value}`,
+                        },
                     },
                 );
 
