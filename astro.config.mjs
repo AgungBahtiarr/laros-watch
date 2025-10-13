@@ -8,6 +8,7 @@ import node from "@astrojs/node";
 // https://astro.build/config
 export default defineConfig({
   site: "https://watch.1dev.win",
+  security: { checkOrigin: false },
   output: "server",
   integrations: [svelte()],
   vite: {
