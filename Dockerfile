@@ -9,7 +9,7 @@ COPY . .
 
 RUN bun run build
 
-FROM node:latest-slim as production
+FROM node:20-slim as production
 WORKDIR /app
 
 COPY --from=builder /usr/src/app/dist/ ./
