@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Connection, Node, Odp, Interface } from "../types";
+    import type { Connection, Node, Odp, Interface } from "@/types";
 
     type Props = {
         isOpen: boolean;

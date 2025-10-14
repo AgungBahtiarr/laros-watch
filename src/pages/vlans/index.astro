@@ -1,5 +1,5 @@
 ---
-import Layout from "../../layouts/Layout.astro";
+import Layout from "@/layouts/Layout.astro";
 
 // Types
 interface VlanInterface {
@@ -195,13 +195,10 @@ const groupedVlans: VlanGroup[] = Array.from(vlanGroupsMap.values()).map(
                                         <div class="card bg-base-200/50 shadow-md">
                                             <div class="card-body p-4">
                                                 <h3 class="card-title text-base">
-                                                    <a
-                                                        href={`/vlans/node/${group.node.id}/vlan/${summary.vlanId}`}
-                                                        class="link link-hover"
-                                                    >
+                                                    <span>
                                                         VLAN {summary.vlanId}:{" "}
                                                         {summary.name}
-                                                    </a>
+                                                    </span>
                                                 </h3>
                                                 <div class="text-sm mt-2 space-y-2">
                                                     {summary.tagged.length >

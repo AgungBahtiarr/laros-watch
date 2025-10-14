@@ -35,12 +35,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
       context.cookies.delete("authToken", { path: "/" });
       return context.redirect("/login");
     }
-
-    // Token is valid, proceed to the requested page.
     return next();
   } catch (error) {
     console.error("Middleware auth check failed:", error);
-    // If the API check fails (e.g., network error), redirect to login to prevent access.
     return context.redirect("/login?error=api_unavailable");
   }
 });

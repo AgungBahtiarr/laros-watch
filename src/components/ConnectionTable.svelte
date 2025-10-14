@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Connection, Node } from "../types";
+    import type { Connection, Node } from "@/types";
 
     type Props = {
         connections: Connection[];

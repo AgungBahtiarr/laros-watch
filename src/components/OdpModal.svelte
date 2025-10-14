@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Odp } from "../types";
+    import type { Odp } from "@/types";
 
     type Props = {
         isOpen: boolean;

@@ -6,14 +6,14 @@
     import "leaflet-routing-machine";
     import "lrm-graphhopper";
     import * as turf from "@turf/turf";
-    import type { Connection, Node, Odp } from "../types";
+    import type { Connection, Node, Odp } from "@/types";
 
     import {
         blueIcon,
         greenIcon,
         redIcon,
         yellowIcon,
-    } from "../assets/map-icon";
+    } from "@/assets/map-icon";
 
     import ConnectionTable from "./ConnectionTable.svelte";
     import ConnectionModal from "./ConnectionModal.svelte";

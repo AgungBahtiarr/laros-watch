@@ -1,10 +1,9 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import MapPage from "../components/MapPage.svelte";
-import type { Node, Connection, Odp } from "../types";
+import Layout from "@/layouts/Layout.astro";
+import MapPage from "@/components/MapPage.svelte";
+import type { Node, Connection, Odp } from "@/types";
 
-const apiBaseUrl =
-    import.meta.env.PUBLIC_API_BASE_URL || "http://localhost:3000";
+const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL;
 const osrmApiUrl = import.meta.env.PUBLIC_OSRM_API_URL;
 const graphhopperApiUrl = import.meta.env.PUBLIC_GRAPHHOPPER_URL;
 
