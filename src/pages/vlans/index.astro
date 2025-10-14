@@ -189,61 +189,69 @@ const groupedVlans: VlanGroup[] = Array.from(vlanGroupsMap.values()).map(
                                     {group.summaries.length} VLANs
                                 </span>
                             </div>
-                            <div class="collapse-content bg-base-100 p-0">
-                                <div class="p-4 space-y-2">
+                            <div class="collapse-content bg-base-100">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
                                     {group.summaries.map((summary) => (
-                                        <div class="collapse collapse-plus bg-base-200/50">
-                                            <input type="checkbox" />
-                                            <div class="collapse-title font-medium">
-                                                VLAN {summary.vlanId}:{" "}
-                                                {summary.name}
-                                            </div>
-                                            <div class="collapse-content bg-base-100 text-sm">
-                                                {summary.tagged.length > 0 && (
-                                                    <div class="pt-2">
-                                                        <p class="font-semibold">
-                                                            Tagged:
-                                                        </p>
-                                                        <div class="flex flex-wrap gap-1 mt-1">
-                                                            {summary.tagged.map(
-                                                                (iface) => (
-                                                                    <span class="badge badge-primary badge-outline">
-                                                                        {
-                                                                            iface.ifName
-                                                                        }
-                                                                    </span>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {summary.untagged.length >
-                                                    0 && (
-                                                    <div class="pt-2">
-                                                        <p class="font-semibold">
-                                                            Untagged:
-                                                        </p>
-                                                        <div class="flex flex-wrap gap-1 mt-1">
-                                                            {summary.untagged.map(
-                                                                (iface) => (
-                                                                    <span class="badge badge-ghost badge-outline">
-                                                                        {
-                                                                            iface.ifName
-                                                                        }
-                                                                    </span>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {summary.tagged.length === 0 &&
-                                                    summary.untagged.length ===
+                                        <div class="card bg-base-200/50 shadow-md">
+                                            <div class="card-body p-4">
+                                                <h3 class="card-title text-base">
+                                                    <a
+                                                        href={`/vlans/node/${group.node.id}/vlan/${summary.vlanId}`}
+                                                        class="link link-hover"
+                                                    >
+                                                        VLAN {summary.vlanId}:{" "}
+                                                        {summary.name}
+                                                    </a>
+                                                </h3>
+                                                <div class="text-sm mt-2 space-y-2">
+                                                    {summary.tagged.length >
                                                         0 && (
-                                                        <p class="text-base-content/60">
-                                                            No interfaces
-                                                            assigned.
-                                                        </p>
+                                                        <div>
+                                                            <p class="font-semibold text-xs mb-1">
+                                                                Tagged:
+                                                            </p>
+                                                            <div class="flex flex-wrap gap-1">
+                                                                {summary.tagged.map(
+                                                                    (iface) => (
+                                                                        <span class="badge badge-primary badge-sm">
+                                                                            {
+                                                                                iface.ifName
+                                                                            }
+                                                                        </span>
+                                                                    ),
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     )}
+                                                    {summary.untagged.length >
+                                                        0 && (
+                                                        <div>
+                                                            <p class="font-semibold text-xs mb-1">
+                                                                Untagged:
+                                                            </p>
+                                                            <div class="flex flex-wrap gap-1">
+                                                                {summary.untagged.map(
+                                                                    (iface) => (
+                                                                        <span class="badge badge-ghost badge-sm">
+                                                                            {
+                                                                                iface.ifName
+                                                                            }
+                                                                        </span>
+                                                                    ),
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {summary.tagged.length ===
+                                                        0 &&
+                                                        summary.untagged
+                                                            .length === 0 && (
+                                                            <p class="text-base-content/60">
+                                                                No interfaces
+                                                                assigned.
+                                                            </p>
+                                                        )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
