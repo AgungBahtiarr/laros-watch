@@ -1,7 +1,6 @@
 ---
 import LoginLayout from "@/layouts/LoginLayout.astro";
 const token = Astro.cookies.get("authToken");
-console.log(token);
 let errorMessage = "";
 if (Astro.request.method === "POST") {
     try {
@@ -25,7 +24,6 @@ if (Astro.request.method === "POST") {
                 path: "/",
                 maxAge: 60 * 60 * 24 * 7, // 1 week
             });
-            console.log(token);
             return Astro.redirect("/");
         } else {
             errorMessage =
