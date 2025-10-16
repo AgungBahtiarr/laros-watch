@@ -95,7 +95,7 @@ const finalNodeGroups: NodeGroup[] = Array.from(nodeGroupsMap.values()).map(
             </p>
         </header>
 
-        <!-- Search and Filter -->
+        <!-- Search, Filter, and Actions -->
         <div
             class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6"
         >
@@ -127,12 +127,28 @@ const finalNodeGroups: NodeGroup[] = Array.from(nodeGroupsMap.values()).map(
                     </span>
                 </div>
             </div>
-            <div class="form-control w-full md:w-auto">
-                <select id="tagFilter" class="select select-bordered">
-                    <option value="all">All Modes</option>
-                    <option value="tagged">Has Tagged</option>
-                    <option value="untagged">Has Untagged</option>
-                </select>
+            <div class="flex items-center gap-4">
+                <div class="form-control w-full md:w-auto">
+                    <select id="tagFilter" class="select select-bordered">
+                        <option value="all">All Modes</option>
+                        <option value="tagged">Has Tagged</option>
+                        <option value="untagged">Has Untagged</option>
+                    </select>
+                </div>
+                <button id="sync-vlans-btn" class="btn btn-secondary">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    Sync VLANs
+                </button>
             </div>
         </div>
 
@@ -190,7 +206,8 @@ const finalNodeGroups: NodeGroup[] = Array.from(nodeGroupsMap.values()).map(
     </main>
 </Layout>
 
-<script>
+<script define:vars={{ token: token?.value, apiUrl }}>
+    // Filtering Script (remains the same)
     function initVlanFilters() {
         const searchInput = document.getElementById("searchInput");
         const tagFilter = document.getElementById("tagFilter");
@@ -231,6 +248,48 @@ const finalNodeGroups: NodeGroup[] = Array.from(nodeGroupsMap.values()).map(
         tagFilter.addEventListener("change", filterAndSearch);
     }
 
-    document.addEventListener("astro:page-load", initVlanFilters);
+    // Sync Script
+    function initSyncButton() {
+        const syncButton = document.getElementById("sync-vlans-btn");
+        if (!syncButton) return;
+
+        syncButton.addEventListener("click", async () => {
+            const originalText = syncButton.innerHTML;
+            syncButton.disabled = true;
+            syncButton.innerHTML = `<span class="loading loading-spinner loading-xs"></span> Syncing...`;
+
+            try {
+                const response = await fetch(`${apiUrl}/api/nodes/vlans`, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Basic ${token}`,
+                    },
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(
+                        `Sync successful! Synced ${result.syncedCount} VLAN interfaces.`,
+                    );
+                    location.reload();
+                } else {
+                    throw new Error(result.message || "Sync failed");
+                }
+            } catch (error) {
+                console.error("Sync error:", error);
+                alert(`An error occurred during sync: ${error.message}`);
+            } finally {
+                syncButton.disabled = false;
+                syncButton.innerHTML = originalText;
+            }
+        });
+    }
+
+    document.addEventListener("astro:page-load", () => {
+        initVlanFilters();
+        initSyncButton();
+    });
     initVlanFilters();
+    initSyncButton();
 </script>
