@@ -1,43 +1,21 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-
-// Types
-interface VlanInterface {
-    id: number;
-    nodeId: number;
-    vlanId: number;
-    interfaceId: number;
-    isTagged: boolean;
-    name: string;
-    description: string | null;
-    node: {
-        id: number;
-        name: string;
-        ipMgmt: string;
-        os: string;
-    };
-    interface: {
-        id: number;
-        ifName: string;
-        ifDescr: string;
-    };
-}
-
-interface VlanSummaryInGroup {
-    vlanId: number;
-    name: string;
-    tagged: VlanInterface["interface"][];
-    untagged: VlanInterface["interface"][];
-}
+import type { VlanInterface } from "@/types";
 
 interface VlanGroup {
-    node: VlanInterface["node"];
-    vlans: VlanInterface[];
-    summaries: VlanSummaryInGroup[];
-    searchText: string;
+    vlanId: number;
+    name: string;
+    interfaces: VlanInterface[];
 }
 
-// Data fetching
+interface NodeGroup {
+    node: VlanInterface["node"];
+    vlanGroups: VlanGroup[];
+    searchText: string;
+    hasTagged: boolean;
+    hasUntagged: boolean;
+}
+
 let vlanInterfaces: VlanInterface[] = [];
 const token = Astro.cookies.get("authToken");
 const apiUrl = import.meta.env.PUBLIC_API_BASE_URL;
@@ -47,8 +25,7 @@ try {
         headers: { Authorization: `Basic ${token?.value}` },
     });
     if (response.ok) {
-        const jsonResponse = await response.json();
-        vlanInterfaces = jsonResponse.data;
+        vlanInterfaces = (await response.json()).data;
     } else {
         console.error(
             "Failed to fetch VLANs:",
@@ -60,205 +37,152 @@ try {
     console.error("Failed to fetch VLANs:", error);
 }
 
-// Stats
-const totalVlanMemberships = vlanInterfaces.length;
-const uniqueVlanIds = new Set(vlanInterfaces.map((v) => v.vlanId)).size;
-const uniqueNodeIds = new Set(vlanInterfaces.map((v) => v.nodeId)).size;
-
-// Grouping logic
-const vlanGroupsMap = vlanInterfaces.reduce((acc, vlan) => {
+const nodeGroupsMap = vlanInterfaces.reduce((acc, vlan) => {
     const nodeId = vlan.node.id;
     if (!acc.has(nodeId)) {
-        acc.set(nodeId, { node: vlan.node, vlans: [] });
+        acc.set(nodeId, { node: vlan.node, vlanMap: new Map() });
     }
-    acc.get(nodeId)!.vlans.push(vlan);
+    const nodeGroup = acc.get(nodeId)!;
+    const vlanId = vlan.vlanId;
+    if (!nodeGroup.vlanMap.has(vlanId)) {
+        nodeGroup.vlanMap.set(vlanId, {
+            vlanId,
+            name: vlan.name,
+            interfaces: [],
+        });
+    }
+    nodeGroup.vlanMap.get(vlanId)!.interfaces.push(vlan);
     return acc;
-}, new Map<number, { node: VlanInterface["node"]; vlans: VlanInterface[] }>());
+}, new Map<number, { node: VlanInterface["node"]; vlanMap: Map<number, VlanGroup> }>());
 
-const groupedVlans: VlanGroup[] = Array.from(vlanGroupsMap.values()).map(
+const finalNodeGroups: NodeGroup[] = Array.from(nodeGroupsMap.values()).map(
     (group) => {
-        const summaries = Object.values(
-            group.vlans.reduce(
-                (acc, vlan) => {
-                    const vlanId = vlan.vlanId;
-                    if (!acc[vlanId]) {
-                        acc[vlanId] = {
-                            vlanId: vlan.vlanId,
-                            name: vlan.name,
-                            tagged: [],
-                            untagged: [],
-                        };
-                    }
-                    if (vlan.isTagged) {
-                        acc[vlanId].tagged.push(vlan.interface);
-                    } else {
-                        acc[vlanId].untagged.push(vlan.interface);
-                    }
-                    return acc;
-                },
-                {} as Record<number, VlanSummaryInGroup>,
-            ),
-        );
-
+        const vlanGroups = Array.from(group.vlanMap.values());
         const searchText = [
             group.node.name.toLowerCase(),
-            ...summaries.map((s) => `${s.vlanId} ${s.name.toLowerCase()}`),
+            group.node.ipMgmt,
+            group.node.os.toLowerCase(),
+            ...vlanGroups.flatMap((vg) => [
+                String(vg.vlanId),
+                vg.name.toLowerCase(),
+            ]),
         ].join(" ");
-
-        return { ...group, summaries, searchText };
+        const hasTagged = vlanGroups.some((vg) =>
+            vg.interfaces.some((i) => i.isTagged),
+        );
+        const hasUntagged = vlanGroups.some((vg) =>
+            vg.interfaces.some((i) => !i.isTagged),
+        );
+        return {
+            node: group.node,
+            vlanGroups,
+            searchText,
+            hasTagged,
+            hasUntagged,
+        };
     },
 );
 ---
 
-<Layout title="VLANs by Device">
+<Layout title="VLAN Nodes">
     <main class="container mx-auto p-4 md:p-8">
         <header class="mb-8">
             <h1 class="text-3xl font-bold text-base-content">
-                VLAN Configurations
+                Nodes with VLANs
             </h1>
             <p class="text-base-content/60">
-                A list of all VLANs, grouped by network device and VLAN ID.
+                A list of all nodes with VLAN configurations.
             </p>
         </header>
 
-        <!-- Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div class="card bg-base-100 border border-base-300">
-                <div class="stat p-5">
-                    <div class="stat-title">Total VLAN Memberships</div>
-                    <div class="stat-value">{totalVlanMemberships}</div>
-                </div>
-            </div>
-            <div class="card bg-base-100 border border-base-300">
-                <div class="stat p-5">
-                    <div class="stat-title">Unique VLANs</div>
-                    <div class="stat-value">{uniqueVlanIds}</div>
-                </div>
-            </div>
-            <div class="card bg-base-100 border border-base-300">
-                <div class="stat p-5">
-                    <div class="stat-title">Nodes with VLANs</div>
-                    <div class="stat-value">{uniqueNodeIds}</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Search -->
-        <div class="form-control w-full mb-6">
-            <div class="relative">
-                <input
-                    type="text"
-                    id="searchInput"
-                    placeholder="Search by node or VLAN..."
-                    class="input input-bordered w-full pr-10"
-                />
-                <span
-                    class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke-width="1.5"
-                        stroke="currentColor"
-                        class="w-5 h-5 text-base-content/40"
+        <!-- Search and Filter -->
+        <div
+            class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6"
+        >
+            <div class="form-control w-full md:w-auto md:flex-grow">
+                <div class="relative">
+                    <input
+                        type="text"
+                        id="searchInput"
+                        placeholder="Search by Node, IP, OS, or VLAN..."
+                        class="input input-bordered w-full pr-10"
+                    />
+                    <span
+                        class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                        ></path>
-                    </svg>
-                </span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="w-5 h-5 text-base-content/40"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                            ></path>
+                        </svg>
+                    </span>
+                </div>
+            </div>
+            <div class="form-control w-full md:w-auto">
+                <select id="tagFilter" class="select select-bordered">
+                    <option value="all">All Modes</option>
+                    <option value="tagged">Has Tagged</option>
+                    <option value="untagged">Has Untagged</option>
+                </select>
             </div>
         </div>
 
-        <!-- VLAN Groups -->
-        <div id="vlan-groups-container" class="space-y-2">
+        <!-- Node Cards Grid -->
+        <div
+            id="node-cards-container"
+            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        >
             {
-                groupedVlans.length > 0 ? (
-                    groupedVlans.map((group) => (
+                finalNodeGroups.length > 0 ? (
+                    finalNodeGroups.map((nodeGroup) => (
                         <div
-                            class="vlan-group collapse collapse-arrow bg-base-200/60 border border-base-300/20"
-                            data-search-text={group.searchText}
+                            class="card bg-base-100 shadow-lg border border-base-300/50 node-card flex flex-col"
+                            data-search-text={nodeGroup.searchText}
+                            data-has-tagged={nodeGroup.hasTagged}
+                            data-has-untagged={nodeGroup.hasUntagged}
                         >
-                            <input type="checkbox" class="peer" />
-                            <div class="collapse-title text-lg font-medium peer-checked:bg-base-300/40">
-                                {group.node.name}
-                                <span class="badge badge-neutral ml-2">
-                                    {group.summaries.length} VLANs
-                                </span>
+                            <div class="card-body flex-grow">
+                                <h2 class="card-title text-lg font-bold">
+                                    {nodeGroup.node.name}
+                                </h2>
+                                <p class="text-sm text-base-content/70">
+                                    {nodeGroup.node.ipMgmt}
+                                </p>
+
+                                <div class="flex items-center gap-2 mt-4">
+                                    <span class="badge badge-outline text-xs">
+                                        {nodeGroup.node.os}
+                                    </span>
+                                    <span class="badge badge-neutral text-xs">
+                                        {nodeGroup.vlanGroups.length} VLANs
+                                    </span>
+                                </div>
                             </div>
-                            <div class="collapse-content bg-base-100">
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                                    {group.summaries.map((summary) => (
-                                        <div class="card bg-base-200/50 shadow-md">
-                                            <div class="card-body p-4">
-                                                <h3 class="card-title text-base">
-                                                    <span>
-                                                        VLAN {summary.vlanId}:{" "}
-                                                        {summary.name}
-                                                    </span>
-                                                </h3>
-                                                <div class="text-sm mt-2 space-y-2">
-                                                    {summary.tagged.length >
-                                                        0 && (
-                                                        <div>
-                                                            <p class="font-semibold text-xs mb-1">
-                                                                Tagged:
-                                                            </p>
-                                                            <div class="flex flex-wrap gap-1">
-                                                                {summary.tagged.map(
-                                                                    (iface) => (
-                                                                        <span class="badge badge-primary badge-sm">
-                                                                            {
-                                                                                iface.ifName
-                                                                            }
-                                                                        </span>
-                                                                    ),
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {summary.untagged.length >
-                                                        0 && (
-                                                        <div>
-                                                            <p class="font-semibold text-xs mb-1">
-                                                                Untagged:
-                                                            </p>
-                                                            <div class="flex flex-wrap gap-1">
-                                                                {summary.untagged.map(
-                                                                    (iface) => (
-                                                                        <span class="badge badge-ghost badge-sm">
-                                                                            {
-                                                                                iface.ifName
-                                                                            }
-                                                                        </span>
-                                                                    ),
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {summary.tagged.length ===
-                                                        0 &&
-                                                        summary.untagged
-                                                            .length === 0 && (
-                                                            <p class="text-base-content/60">
-                                                                No interfaces
-                                                                assigned.
-                                                            </p>
-                                                        )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
+                            <div class="card-body pt-0">
+                                <div class="divider mt-0 mb-4" />
+                                <div class="card-actions justify-end">
+                                    <a
+                                        href={`/vlans/${nodeGroup.node.id}`}
+                                        class="btn btn-primary btn-block"
+                                    >
+                                        Details
+                                    </a>
                                 </div>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div class="text-center py-16">
-                        <p>No VLANs found or API is unavailable.</p>
+                    <div class="col-span-full text-center py-16 bg-base-200 rounded-lg">
+                        <p>No nodes with VLANs found.</p>
                     </div>
                 )
             }
@@ -267,30 +191,46 @@ const groupedVlans: VlanGroup[] = Array.from(vlanGroupsMap.values()).map(
 </Layout>
 
 <script>
-    function initVlanFilter() {
+    function initVlanFilters() {
         const searchInput = document.getElementById("searchInput");
-        const container = document.getElementById("vlan-groups-container");
-        if (!searchInput || !container) return;
-        const groups = container.querySelectorAll(".vlan-group");
+        const tagFilter = document.getElementById("tagFilter");
+        const container = document.getElementById("node-cards-container");
+        if (!searchInput || !tagFilter || !container) return;
 
-        function filterGroups() {
+        const cards = container.querySelectorAll(".node-card");
+
+        function filterAndSearch() {
             const searchTerm = searchInput.value.toLowerCase();
+            const tagStatus = tagFilter.value;
 
-            groups.forEach((group) => {
-                const searchData = group.dataset.searchText || "";
-                const searchMatch = searchData.includes(searchTerm);
+            cards.forEach((card) => {
+                const searchText = card.dataset.searchText || "";
+                const hasTagged = card.dataset.hasTagged === "true";
+                const hasUntagged = card.dataset.hasUntagged === "true";
 
-                if (searchMatch) {
-                    group.style.display = "";
+                const searchMatch = searchText.includes(searchTerm);
+
+                let tagMatch = false;
+                if (tagStatus === "all") {
+                    tagMatch = true;
+                } else if (tagStatus === "tagged") {
+                    tagMatch = hasTagged;
+                } else if (tagStatus === "untagged") {
+                    tagMatch = hasUntagged;
+                }
+
+                if (searchMatch && tagMatch) {
+                    card.style.display = "flex";
                 } else {
-                    group.style.display = "none";
+                    card.style.display = "none";
                 }
             });
         }
 
-        searchInput.addEventListener("input", filterGroups);
+        searchInput.addEventListener("input", filterAndSearch);
+        tagFilter.addEventListener("change", filterAndSearch);
     }
 
-    document.addEventListener("astro:page-load", initVlanFilter);
-    initVlanFilter();
+    document.addEventListener("astro:page-load", initVlanFilters);
+    initVlanFilters();
 </script>

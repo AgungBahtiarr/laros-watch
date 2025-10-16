@@ -1,0 +1,204 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import type { VlanInterface, Node } from "@/types";
+
+const { id: nodeId } = Astro.params;
+const token = Astro.cookies.get("authToken");
+const apiUrl = import.meta.env.PUBLIC_API_BASE_URL;
+
+interface VlanGroup {
+    vlanId: number;
+    name: string;
+    tagged: VlanInterface[];
+    untagged: VlanInterface[];
+}
+
+let node: Node | null = null;
+let vlanGroups: VlanGroup[] = [];
+let nodeVlanInterfaces: VlanInterface[] = [];
+
+try {
+    const [nodeResponse, vlansResponse] = await Promise.all([
+        fetch(`${apiUrl}/api/nodes/${nodeId}`, {
+            headers: { Authorization: `Basic ${token?.value}` },
+        }),
+        fetch(`${apiUrl}/api/nodes/vlans`, {
+            headers: { Authorization: `Basic ${token?.value}` },
+        }),
+    ]);
+
+    if (nodeResponse.ok) {
+        node = await nodeResponse.json();
+    } else {
+        console.error("Failed to fetch node details:", nodeResponse.status);
+    }
+
+    if (vlansResponse.ok) {
+        const allVlanInterfaces: VlanInterface[] = (await vlansResponse.json())
+            .data;
+
+        nodeVlanInterfaces = allVlanInterfaces.filter(
+            (vlan) => vlan.nodeId === Number(nodeId),
+        );
+
+        const groups = nodeVlanInterfaces.reduce((acc, vlan) => {
+            const vlanId = vlan.vlanId;
+            if (!acc.has(vlanId)) {
+                acc.set(vlanId, {
+                    vlanId,
+                    name: vlan.name,
+                    tagged: [],
+                    untagged: [],
+                });
+            }
+            const group = acc.get(vlanId)!;
+            if (vlan.isTagged) {
+                group.tagged.push(vlan);
+            } else {
+                group.untagged.push(vlan);
+            }
+            return acc;
+        }, new Map<number, VlanGroup>());
+
+        vlanGroups = Array.from(groups.values());
+    } else {
+        console.error("Failed to fetch VLANs:", vlansResponse.status);
+    }
+} catch (error) {
+    console.error("Failed to fetch data:", error);
+}
+
+// Calculate summary stats
+const totalVlans = vlanGroups.length;
+const taggedAssignments = vlanGroups.reduce(
+    (sum, group) => sum + group.tagged.length,
+    0,
+);
+const untaggedAssignments = vlanGroups.reduce(
+    (sum, group) => sum + group.untagged.length,
+    0,
+);
+const uniqueInterfaces = new Set(
+    nodeVlanInterfaces.map((v) => v.interface.ifName),
+).size;
+---
+
+<Layout title={`VLANs on ${node?.name ?? "Node"}`}>
+    <main class="container mx-auto p-4 md:p-8">
+        <header class="mb-8">
+            <a href="/vlans" class="text-primary hover:underline mb-4 block"
+                >&larr; Back to All Nodes</a
+            >
+            <h1 class="text-3xl font-bold text-base-content">
+                VLANs on <span class="text-primary"
+                    >{node?.name ?? `Node ${nodeId}`}</span
+                >
+            </h1>
+            <p class="text-base-content/60">
+                A detailed view of all VLANs configured on this node.
+            </p>
+        </header>
+
+        <!-- Summary Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="card bg-base-100 border border-base-300">
+                <div class="stat p-5">
+                    <div class="stat-title">Unique VLANs</div>
+                    <div class="stat-value">{totalVlans}</div>
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-300">
+                <div class="stat p-5">
+                    <div class="stat-title">Unique Interfaces</div>
+                    <div class="stat-value">{uniqueInterfaces}</div>
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-300">
+                <div class="stat p-5">
+                    <div class="stat-title">Tagged Assignments</div>
+                    <div class="stat-value text-primary">
+                        {taggedAssignments}
+                    </div>
+                </div>
+            </div>
+            <div class="card bg-base-100 border border-base-300">
+                <div class="stat p-5">
+                    <div class="stat-value text-ghost">
+                        {untaggedAssignments}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {
+            vlanGroups.length > 0 ? (
+                <div>
+                    <h2 class="text-2xl font-bold text-base-content mb-4">
+                        VLAN Details
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {vlanGroups.map((vlanGroup) => (
+                            <div class="card bg-base-200/50 shadow-md">
+                                <div class="card-body p-4">
+                                    <h3 class="card-title text-base">
+                                        VLAN {vlanGroup.vlanId}:{" "}
+                                        {vlanGroup.name}
+                                    </h3>
+                                    <div class="text-sm mt-2 space-y-3">
+                                        {vlanGroup.tagged.length > 0 && (
+                                            <div>
+                                                <p class="font-semibold text-xs mb-1">
+                                                    Tagged:
+                                                </p>
+                                                <div class="flex flex-wrap gap-1">
+                                                    {vlanGroup.tagged.map(
+                                                        (iface) => (
+                                                            <span class="badge badge-primary badge-sm">
+                                                                {
+                                                                    iface
+                                                                        .interface
+                                                                        .ifName
+                                                                }
+                                                            </span>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {vlanGroup.untagged.length > 0 && (
+                                            <div>
+                                                <p class="font-semibold text-xs mb-1">
+                                                    Untagged:
+                                                </p>
+                                                <div class="flex flex-wrap gap-1">
+                                                    {vlanGroup.untagged.map(
+                                                        (iface) => (
+                                                            <span class="badge badge-ghost badge-sm">
+                                                                {
+                                                                    iface
+                                                                        .interface
+                                                                        .ifName
+                                                                }
+                                                            </span>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : (
+                <div class="text-center py-16 bg-base-200 rounded-lg">
+                    <p>
+                        No VLAN configurations found for this node, or the data
+                        is unavailable.
+                    </p>
+                </div>
+            )
+        }
+    </main>
+</Layout>
