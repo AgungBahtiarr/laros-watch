@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "laros-watch",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
@@ -27,6 +27,7 @@
   },
   "resolutions": {
     "corslite": "npm:@mapbox/corslite@0.0.7",
-    "polyline": "npm:@mapbox/polyline@0.2.0"
+    "polyline": "npm:@mapbox/polyline@0.2.0",
+    "vite": "npm:rolldown-vite@latest"
   }
 }
