@@ -3,17 +3,35 @@
 
     type Props = {
         isOpen: boolean;
+
         connection: Connection | null;
+
         nodes: Node[];
+
+        routeDistance: number;
+
+        totalRouteDistance: number;
+
         onFind: (data: {
             connectionId: number;
+
             startNodeId: number;
+
             distance: number;
         }) => void;
+
         onClose: () => void;
     };
 
-    const { isOpen, connection, nodes, onFind, onClose } = $props<Props>();
+    const {
+        isOpen,
+        connection,
+        nodes,
+        routeDistance,
+        totalRouteDistance,
+        onFind,
+        onClose,
+    } = $props<Props>();
 
     let startNodeId = $state(connection?.deviceAId.toString() || "");
     let distance = $state("");
@@ -93,7 +111,28 @@
                             class="input input-bordered w-full"
                             required
                             bind:value={distance}
+                            max={routeDistance}
+                            step="any"
                         />
+                        {#if totalRouteDistance > 0}
+                            <div class="text-xs text-opacity-75 mt-1 space-y-1">
+                                <p>
+                                    Map route distance:
+                                    <strong>{routeDistance.toFixed(2)} m</strong
+                                    >
+                                </p>
+                                <p>
+                                    Total distance (with spare):
+                                    <strong
+                                        >{totalRouteDistance.toFixed(2)} m</strong
+                                    >
+                                </p>
+                                <p class="italic mt-2">
+                                    Note: The distance is measured along the
+                                    visible map route.
+                                </p>
+                            </div>
+                        {/if}
                     </div>
                 </div>
                 <div class="modal-action">

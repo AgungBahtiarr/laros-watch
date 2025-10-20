@@ -57,6 +57,7 @@
     const originalStyles = new Map<L.GeoJSON, L.PathOptions>();
     const routeGeometries: { [key: number]: any } = {};
     const routeDistances: { [key: number]: number } = {};
+    const routeGeographicalDistances: { [key: number]: number } = {};
     const nodeMap = $derived(new Map(nodes.map((node) => [node.id, node])));
 
     // Editing State
@@ -280,11 +281,26 @@
                             route.coordinates.map((c: any) => [c.lng, c.lat]),
                         );
                         routeGeometries[conn.id] = routeGeom;
-                        routeDistances[conn.id] = route.summary.totalDistance;
+
+                        const geographicalDistance =
+                            route.summary.totalDistance;
+                        routeGeographicalDistances[conn.id] =
+                            geographicalDistance;
+
+                        // Calculate spare length
+                        const spareLength = conn.waypointPath?.reduce(
+                            (acc, wp) => acc + (wp.spare || 0),
+                            0,
+                        );
+
+                        const totalDistance =
+                            geographicalDistance + (spareLength || 0);
+                        routeDistances[conn.id] = totalDistance;
+
                         let routeLayer = routeLayers[conn.id];
                         if (!routeLayer) {
                             const popup = `<b>${conn.description || "C"}</b><br>${(
-                                route.summary.totalDistance / 1000
+                                totalDistance / 1000
                             ).toFixed(2)} km`;
                             const style: L.PathOptions = {
                                 color: stringToColor(conn.id.toString()),
@@ -638,7 +654,7 @@
             return;
         }
         const routeGeom = routeGeometries[connectionId];
-        const routeDist = routeDistances[connectionId];
+        const routeDist = routeGeographicalDistances[connectionId];
         if (!routeGeom) {
             alert("Route not found for this connection.");
             return;
@@ -978,6 +994,12 @@
     isOpen={showFindPointModal}
     connection={selectedConnection}
     {nodes}
+    routeDistance={selectedConnection
+        ? routeGeographicalDistances[selectedConnection.id] || 0
+        : 0}
+    totalRouteDistance={selectedConnection
+        ? routeDistances[selectedConnection.id] || 0
+        : 0}
     onFind={handleFindPoint}
     onClose={() => (showFindPointModal = false)}
 />
