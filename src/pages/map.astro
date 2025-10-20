@@ -1,7 +1,7 @@
 ---
 import Layout from "@/layouts/Layout.astro";
 import MapPage from "@/components/MapPage.svelte";
-import type { Node, Connection, Odp } from "@/types";
+import type { Node, Connection, Waypoint } from "@/types";
 
 const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL;
 const osrmApiUrl = import.meta.env.PUBLIC_OSRM_API_URL;
@@ -10,7 +10,7 @@ const graphhopperApiUrl = import.meta.env.PUBLIC_GRAPHHOPPER_URL;
 // Fetch nodes and connections
 const token = Astro.cookies.get("authToken");
 
-const [nodesResponse, connectionsResponse, odpsResponse] = await Promise.all([
+const [nodesResponse, connectionsResponse, waypointsResponse] = await Promise.all([
     fetch(`${apiBaseUrl}/api/nodes`, {
         headers: {
             Authorization: `Basic ${token?.value}`,
@@ -21,7 +21,7 @@ const [nodesResponse, connectionsResponse, odpsResponse] = await Promise.all([
             Authorization: `Basic ${token?.value}`,
         },
     }),
-    fetch(`${apiBaseUrl}/api/nodes/odp`, {
+    fetch(`${apiBaseUrl}/api/nodes/waypoints`, {
         headers: {
             Authorization: `Basic ${token?.value}`,
         },
@@ -30,11 +30,11 @@ const [nodesResponse, connectionsResponse, odpsResponse] = await Promise.all([
 
 const nodes: Node[] = await nodesResponse.json();
 const connections: Connection[] = await connectionsResponse.json();
-const odps: Odp[] = await odpsResponse.json();
+const waypoints: Waypoint[] = await waypointsResponse.json();
 
 const nodesWithLocation = nodes.filter((node) => node.lat && node.lng);
 
-// Group connections by device and port pair, and select the one with ODP path if available
+// Group connections by device and port pair, and select the one with Waypoint path if available
 const connectionGroups = new Map<string, Connection[]>();
 connections.forEach((conn) => {
     const pair1 = `${conn.deviceAId}:${conn.portAId}`;
@@ -48,11 +48,11 @@ connections.forEach((conn) => {
 
 const uniqueConnections: Connection[] = [];
 for (const group of connectionGroups.values()) {
-    const withOdp = group.find(
-        (c) => c.odpPath && Array.isArray(c.odpPath) && c.odpPath.length > 0,
+    const withWaypoint = group.find(
+        (c) => c.waypointPath && Array.isArray(c.waypointPath) && c.waypointPath.length > 0,
     );
-    if (withOdp) {
-        uniqueConnections.push(withOdp);
+    if (withWaypoint) {
+        uniqueConnections.push(withWaypoint);
     } else if (group.length > 0) {
         uniqueConnections.push(group[0]);
     }
@@ -68,7 +68,7 @@ for (const group of connectionGroups.values()) {
         apiBaseUrl={apiBaseUrl}
         osrmApiUrl={osrmApiUrl}
         graphhopperApiUrl={graphhopperApiUrl}
-        odps={odps}
+        waypoints={waypoints}
         token={token?.value}
     />
 </Layout>

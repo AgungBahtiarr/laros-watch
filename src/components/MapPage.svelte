@@ -6,7 +6,7 @@
     import "leaflet-routing-machine";
     import "lrm-graphhopper";
     import * as turf from "@turf/turf";
-    import type { Connection, Node, Odp } from "@/types";
+    import type { Connection, Node, Waypoint } from "@/types";
 
     import {
         blueIcon,
@@ -18,12 +18,12 @@
     import ConnectionTable from "./ConnectionTable.svelte";
     import ConnectionModal from "./ConnectionModal.svelte";
     import FindPointModal from "./FindPointModal.svelte";
-    import OdpModal from "./OdpModal.svelte";
+    import WaypointModal from "./WaypointModal.svelte";
 
     type Props = {
         nodes: Node[];
         connections: Connection[];
-        odps: Odp[];
+        waypoints: Waypoint[];
         nodesWithLocation: Node[];
         apiBaseUrl: string;
         osrmApiUrl: string;
@@ -34,7 +34,7 @@
     const {
         nodes,
         connections,
-        odps,
+        waypoints,
         nodesWithLocation,
         apiBaseUrl,
         osrmApiUrl,
@@ -50,7 +50,7 @@
     // Map objects
     const routeLayers: { [key: number]: L.GeoJSON } = {};
     const routeControls: { [key: number]: L.Routing.Control } = {};
-    const odpMarkers = new Map<number, L.Marker>();
+    const waypointMarkers = new Map<number, L.Marker>();
 
     // UI State
     let selectedRouteLayer: L.GeoJSON | null = null;
@@ -61,21 +61,23 @@
 
     // Editing State
     let editingConnectionId = $state<number | null>(null);
-    let dirtyOdps = $state(new Map<number, { lat: number; lng: number }>());
-    let originalOdpPositions = $state(
+    let dirtyWaypoints = $state(
+        new Map<number, { lat: number; lng: number }>(),
+    );
+    let originalWaypointPositions = $state(
         new Map<number, { lat: string; lng: string }>(),
     );
 
     // Modal State
     let showConnectionModal = $state(false);
     let showFindPointModal = $state(false);
-    let showOdpModal = $state(false);
+    let showWaypointModal = $state(false);
     let isEditConnection = $state(false);
-    let isEditOdp = $state(false);
-    let isAddingOdpMode = $state(false);
+    let isEditWaypoint = $state(false);
+    let isAddingWaypointMode = $state(false);
     let selectedConnection = $state<Connection | null>(null);
-    let selectedOdp = $state<Odp | null>(null);
-    let newOdpLatLng = $state<{ lat: number; lng: number } | null>(null);
+    let selectedWaypoint = $state<Waypoint | null>(null);
+    let newWaypointLatLng = $state<{ lat: number; lng: number } | null>(null);
 
     function stringToColor(str: string) {
         let hash = 0;
@@ -127,21 +129,21 @@
                 );
         });
 
-        odps.forEach((odp) => {
-            if (odp.lat && odp.lng) {
+        waypoints.forEach((waypoint) => {
+            if (waypoint.lat && waypoint.lng) {
                 const marker = L.marker(
-                    [parseFloat(odp.lat), parseFloat(odp.lng)],
+                    [parseFloat(waypoint.lat), parseFloat(waypoint.lng)],
                     {
                         icon: blueIcon,
                         draggable: true,
                     },
                 ).addTo(map).bindPopup(`
                         <div>
-                            <b>${odp.name}</b><br>
-                            ${odp.location || ""}<br><br>
+                            <b>${waypoint.name}</b><br>
+                            ${waypoint.location || ""}<br><br>
                             <div style="display: flex; gap: 8px; margin-top: 8px;">
-                                <button onclick="window.editOdp(${odp.id})" class="btn btn-sm btn-primary" style="padding: 4px 8px; font-size: 12px;">Edit</button>
-                                <button onclick="window.deleteOdp(${odp.id})" class="btn btn-sm btn-error" style="padding: 4px 8px; font-size: 12px;">Hapus</button>
+                                <button onclick="window.editWaypoint(${waypoint.id})" class="btn btn-sm btn-primary" style="padding: 4px 8px; font-size: 12px;">Edit</button>
+                                <button onclick="window.deleteWaypoint(${waypoint.id})" class="btn btn-sm btn-error" style="padding: 4px 8px; font-size: 12px;">Hapus</button>
                             </div>
                         </div>
                     `);
@@ -151,20 +153,23 @@
                     marker.dragging.disable();
                 }
 
-                odpMarkers.set(odp.id, marker);
+                waypointMarkers.set(waypoint.id, marker);
 
                 marker.on("dragend", (e) => {
                     if (editingConnectionId !== null) {
-                        // Validate that this ODP is part of the connection being edited
+                        // Validate that this Waypoint is part of the connection being edited
                         const conn = connections.find(
                             (c) => c.id === editingConnectionId,
                         );
-                        const isOdpInPath = conn?.odpPath?.some(
-                            (p) => p.id === odp.id,
+                        const isWaypointInPath = conn?.waypointPath?.some(
+                            (p) => p.id === waypoint.id,
                         );
 
-                        if (isOdpInPath) {
-                            handleOdpDrag(odp.id, e.target.getLatLng());
+                        if (isWaypointInPath) {
+                            handleWaypointDrag(
+                                waypoint.id,
+                                e.target.getLatLng(),
+                            );
                         }
                     }
                 });
@@ -172,12 +177,12 @@
         });
 
         map.on("click", (e) => {
-            if (isAddingOdpMode) {
-                newOdpLatLng = e.latlng;
-                isEditOdp = false;
-                selectedOdp = null;
-                showOdpModal = true;
-                isAddingOdpMode = false;
+            if (isAddingWaypointMode) {
+                newWaypointLatLng = e.latlng;
+                isEditWaypoint = false;
+                selectedWaypoint = null;
+                showWaypointModal = true;
+                isAddingWaypointMode = false;
                 mapElement.style.cursor = "";
             } else if (selectedRouteLayer) {
                 selectedRouteLayer.setStyle(
@@ -216,29 +221,31 @@
                     nodeB.lat &&
                     nodeB.lng
                 ) {
-                    const waypoints = [
+                    const wps = [
                         L.latLng(parseFloat(nodeA.lat), parseFloat(nodeA.lng)),
                     ];
-                    if (conn.odpPath) {
-                        // Ensure ODP waypoints are added in exact order
-                        conn.odpPath.forEach((pathOdp, index) => {
-                            const odp = odps.find((o) => o.id === pathOdp.id);
-                            if (odp?.lat && odp?.lng) {
-                                waypoints.push(
+                    if (conn.waypointPath) {
+                        // Ensure Waypoint waypoints are added in exact order
+                        conn.waypointPath.forEach((pathWaypoint, index) => {
+                            const waypoint = waypoints.find(
+                                (o) => o.id === pathWaypoint.id,
+                            );
+                            if (waypoint?.lat && waypoint?.lng) {
+                                wps.push(
                                     L.latLng(
-                                        parseFloat(odp.lat),
-                                        parseFloat(odp.lng),
+                                        parseFloat(waypoint.lat),
+                                        parseFloat(waypoint.lng),
                                     ),
                                 );
                             }
                         });
                     }
-                    waypoints.push(
+                    wps.push(
                         L.latLng(parseFloat(nodeB.lat), parseFloat(nodeB.lng)),
                     );
 
                     const routingControl = L.Routing.control({
-                        waypoints,
+                        waypoints: wps,
                         router:
                             routingService === "osrm"
                                 ? L.Routing.osrmv1({ serviceUrl: osrmApiUrl })
@@ -323,44 +330,44 @@
     // --- Imperative Edit Mode Functions ---
     // Expose functions to global window for popup buttons
     function exposeGlobalFunctions() {
-        (window as any).editOdp = (odpId: number) => {
-            const odp = odps.find((o) => o.id === odpId);
-            if (odp) {
-                handleEditOdp(odp);
+        (window as any).editWaypoint = (waypointId: number) => {
+            const waypoint = waypoints.find((o) => o.id === waypointId);
+            if (waypoint) {
+                handleEditWaypoint(waypoint);
             }
         };
 
-        (window as any).deleteOdp = (odpId: number) => {
-            handleDeleteOdp(odpId);
+        (window as any).deleteWaypoint = (waypointId: number) => {
+            handleDeleteWaypoint(waypointId);
         };
     }
 
     function activateEditMode(connId: number) {
         const conn = connections.find((c) => c.id === connId);
-        if (conn && conn.odpPath && conn.odpPath.length > 0) {
-            const pathOdpIds = conn.odpPath.map((p) => p.id);
+        if (conn && conn.waypointPath && conn.waypointPath.length > 0) {
+            const pathWaypointIds = conn.waypointPath.map((p) => p.id);
 
             // Store original positions before editing
-            originalOdpPositions.clear();
-            pathOdpIds.forEach((odpId) => {
-                const odp = odps.find((o) => o.id === odpId);
-                if (odp?.lat && odp?.lng) {
-                    originalOdpPositions.set(odpId, {
-                        lat: odp.lat,
-                        lng: odp.lng,
+            originalWaypointPositions.clear();
+            pathWaypointIds.forEach((waypointId) => {
+                const waypoint = waypoints.find((o) => o.id === waypointId);
+                if (waypoint?.lat && waypoint?.lng) {
+                    originalWaypointPositions.set(waypointId, {
+                        lat: waypoint.lat,
+                        lng: waypoint.lng,
                     });
                 }
             });
 
-            // Only enable editing for ODPs that are in this connection's path
-            for (const [odpId, marker] of odpMarkers.entries()) {
-                if (pathOdpIds.includes(odpId)) {
+            // Only enable editing for Waypoints that are in this connection's path
+            for (const [waypointId, marker] of waypointMarkers.entries()) {
+                if (pathWaypointIds.includes(waypointId)) {
                     if (marker.dragging) {
                         marker.dragging.enable();
                     }
                     marker.setIcon(yellowIcon);
                 } else {
-                    // Ensure other ODPs remain non-editable
+                    // Ensure other Waypoints remain non-editable
                     if (marker.dragging) {
                         marker.dragging.disable();
                     }
@@ -371,7 +378,7 @@
     }
 
     function deactivateEditMode() {
-        for (const marker of odpMarkers.values()) {
+        for (const marker of waypointMarkers.values()) {
             if (marker.dragging) {
                 marker.dragging.disable();
             }
@@ -386,13 +393,13 @@
     }
 
     function finishEditing() {
-        if (dirtyOdps.size > 0) {
+        if (dirtyWaypoints.size > 0) {
             if (confirm("You have unsaved changes. Save them now?")) {
-                saveAllOdpChanges();
+                saveAllWaypointChanges();
                 // Clean up after successful save
                 deactivateEditMode();
                 editingConnectionId = null;
-                originalOdpPositions.clear();
+                originalWaypointPositions.clear();
             } else {
                 cancelEditing();
             }
@@ -400,13 +407,13 @@
             // No changes made, just exit edit mode
             deactivateEditMode();
             editingConnectionId = null;
-            originalOdpPositions.clear();
+            originalWaypointPositions.clear();
         }
     }
 
     function cancelEditing() {
         // Check if there are unsaved changes and confirm cancellation
-        if (dirtyOdps.size > 0) {
+        if (dirtyWaypoints.size > 0) {
             if (
                 !confirm(
                     "Are you sure you want to cancel? All unsaved changes will be lost.",
@@ -417,14 +424,17 @@
         }
 
         // Restore original positions
-        for (const [odpId, originalPos] of originalOdpPositions.entries()) {
-            const odp = odps.find((o) => o.id === odpId);
-            const marker = odpMarkers.get(odpId);
+        for (const [
+            waypointId,
+            originalPos,
+        ] of originalWaypointPositions.entries()) {
+            const waypoint = waypoints.find((o) => o.id === waypointId);
+            const marker = waypointMarkers.get(waypointId);
 
-            if (odp && marker && originalPos) {
-                // Restore ODP data
-                odp.lat = originalPos.lat;
-                odp.lng = originalPos.lng;
+            if (waypoint && marker && originalPos) {
+                // Restore Waypoint data
+                waypoint.lat = originalPos.lat;
+                waypoint.lng = originalPos.lng;
 
                 // Restore marker position
                 marker.setLatLng([
@@ -436,7 +446,11 @@
 
         // Update routes with original positions
         connections.forEach((conn) => {
-            if (conn.odpPath?.some((p) => originalOdpPositions.has(p.id))) {
+            if (
+                conn.waypointPath?.some((p) =>
+                    originalWaypointPositions.has(p.id),
+                )
+            ) {
                 const routingControl = routeControls[conn.id];
                 if (routingControl) {
                     const nodeA = nodeMap.get(conn.deviceAId);
@@ -449,8 +463,10 @@
                             ),
                         ];
 
-                        conn.odpPath.forEach((pathOdp) => {
-                            const o = odps.find((odp) => odp.id === pathOdp.id);
+                        conn.waypointPath.forEach((pathWaypoint) => {
+                            const o = waypoints.find(
+                                (waypoint) => waypoint.id === pathWaypoint.id,
+                            );
                             if (o?.lat && o?.lng) {
                                 newWps.push(
                                     L.latLng(
@@ -475,29 +491,29 @@
         });
 
         // Clear dirty state
-        dirtyOdps.clear();
-        originalOdpPositions.clear();
+        dirtyWaypoints.clear();
+        originalWaypointPositions.clear();
 
         // Deactivate edit mode
         deactivateEditMode();
         editingConnectionId = null;
     }
 
-    function handleOdpDrag(odpId: number, newLatLng: L.LatLng) {
-        const odpToUpdate = odps.find((o) => o.id === odpId);
-        if (odpToUpdate) {
-            odpToUpdate.lat = newLatLng.lat.toString();
-            odpToUpdate.lng = newLatLng.lng.toString();
+    function handleWaypointDrag(waypointId: number, newLatLng: L.LatLng) {
+        const waypointToUpdate = waypoints.find((o) => o.id === waypointId);
+        if (waypointToUpdate) {
+            waypointToUpdate.lat = newLatLng.lat.toString();
+            waypointToUpdate.lng = newLatLng.lng.toString();
         }
 
         connections.forEach((conn) => {
-            if (conn.odpPath?.some((p) => p.id === odpId)) {
+            if (conn.waypointPath?.some((p) => p.id === waypointId)) {
                 const routingControl = routeControls[conn.id];
                 if (routingControl) {
                     const nodeA = nodeMap.get(conn.deviceAId);
                     const nodeB = nodeMap.get(conn.deviceBId);
                     if (nodeA?.lat && nodeB?.lat) {
-                        // Build waypoints in exact order from connection's odpPath
+                        // Build waypoints in exact order from connection's waypointPath
                         const newWps = [
                             L.latLng(
                                 parseFloat(nodeA.lat),
@@ -505,9 +521,11 @@
                             ),
                         ];
 
-                        // Maintain exact order from conn.odpPath
-                        conn.odpPath.forEach((pathOdp, index) => {
-                            const o = odps.find((odp) => odp.id === pathOdp.id);
+                        // Maintain exact order from conn.waypointPath
+                        conn.waypointPath.forEach((pathWaypoint, index) => {
+                            const o = waypoints.find(
+                                (waypoint) => waypoint.id === pathWaypoint.id,
+                            );
                             if (o?.lat && o?.lng) {
                                 newWps.push(
                                     L.latLng(
@@ -532,49 +550,57 @@
             }
         });
 
-        dirtyOdps.set(odpId, {
+        dirtyWaypoints.set(waypointId, {
             lat: newLatLng.lat.toString(),
             lng: newLatLng.lng.toString(),
         });
     }
 
-    async function saveAllOdpChanges() {
-        if (dirtyOdps.size === 0) return;
-        const promises = Array.from(dirtyOdps.entries()).map(
-            ([odpId, latlng]) => {
-                const odp = odps.find((o) => o.id === odpId)!;
+    async function saveAllWaypointChanges() {
+        if (dirtyWaypoints.size === 0) return;
+        const promises = Array.from(dirtyWaypoints.entries()).map(
+            ([waypointId, latlng]) => {
+                const waypoint = waypoints.find((o) => o.id === waypointId)!;
                 const payload = {
-                    name: odp.name,
-                    location: odp.location,
-                    notes: odp.notes,
+                    name: waypoint.name,
+                    location: waypoint.location,
+                    notes: waypoint.notes,
+                    type: waypoint.type,
+                    spare: waypoint.spare,
                     lat: latlng.lat,
                     lng: latlng.lng,
                 };
-                return fetch(`${apiBaseUrl}/api/nodes/odp/${odpId}`, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Basic ${token}`,
+                return fetch(
+                    `${apiBaseUrl}/api/nodes/waypoints/${waypointId}`,
+                    {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Basic ${token}`,
+                        },
+                        body: JSON.stringify(payload),
                     },
-                    body: JSON.stringify(payload),
-                });
+                );
             },
         );
         try {
             const responses = await Promise.all(promises);
             for (const response of responses) {
                 if (!response.ok) {
-                    console.error("Failed to save ODP:", await response.json());
+                    console.error(
+                        "Failed to save Waypoint:",
+                        await response.json(),
+                    );
                     throw new Error(
-                        `Failed to save ODP ${response.url}. Status: ${response.status}`,
+                        `Failed to save Waypoint ${response.url}. Status: ${response.status}`,
                     );
                 }
             }
-            alert("All ODP changes saved successfully!");
-            dirtyOdps.clear();
+            alert("All Waypoint changes saved successfully!");
+            dirtyWaypoints.clear();
         } catch (error) {
             console.error(error);
-            alert("Error saving ODP changes: " + (error as Error).message);
+            alert("Error saving Waypoint changes: " + (error as Error).message);
         }
     }
 
@@ -677,11 +703,11 @@
             alert("Error: " + (error as Error).message);
         }
     }
-    async function handleSaveOdp(odp: any) {
-        const url = odp.id
-            ? `${apiBaseUrl}/api/nodes/odp/${odp.id}`
-            : `${apiBaseUrl}/api/nodes/odp`;
-        const method = odp.id ? "PUT" : "POST";
+    async function handleSaveWaypoint(waypoint: any) {
+        const url = waypoint.id
+            ? `${apiBaseUrl}/api/nodes/waypoints/${waypoint.id}`
+            : `${apiBaseUrl}/api/nodes/waypoints`;
+        const method = waypoint.id ? "PUT" : "POST";
         try {
             const r = await fetch(url, {
                 method,
@@ -689,26 +715,29 @@
                     "Content-Type": "application/json",
                     Authorization: `Basic ${token}`,
                 },
-                body: JSON.stringify(odp),
+                body: JSON.stringify(waypoint),
             });
             if (!r.ok) {
                 throw new Error(await r.text());
             }
-            showOdpModal = false;
+            showWaypointModal = false;
             location.reload();
         } catch (e) {
             alert("Error: " + (e as Error).message);
         }
     }
-    async function handleDeleteOdp(odpId: number) {
+    async function handleDeleteWaypoint(waypointId: number) {
         if (confirm("Are you sure?")) {
             try {
-                const r = await fetch(`${apiBaseUrl}/api/nodes/odp/${odpId}`, {
-                    method: "DELETE",
-                    headers: {
-                        Authorization: `Basic ${token}`,
+                const r = await fetch(
+                    `${apiBaseUrl}/api/nodes/waypoints/${waypointId}`,
+                    {
+                        method: "DELETE",
+                        headers: {
+                            Authorization: `Basic ${token}`,
+                        },
                     },
-                });
+                );
                 if (!r.ok) {
                     throw new Error(await r.text());
                 }
@@ -732,14 +761,14 @@
         selectedConnection = conn;
         showFindPointModal = true;
     }
-    function handleAddOdp() {
+    function handleAddWaypoint() {
         mapElement.style.cursor = "crosshair";
-        isAddingOdpMode = true;
+        isAddingWaypointMode = true;
     }
-    function handleEditOdp(odp: Odp) {
-        isEditOdp = true;
-        selectedOdp = odp;
-        showOdpModal = true;
+    function handleEditWaypoint(waypoint: Waypoint) {
+        isEditWaypoint = true;
+        selectedWaypoint = waypoint;
+        showWaypointModal = true;
     }
 
     function handleKeydown(event: KeyboardEvent) {
@@ -747,9 +776,9 @@
             if (editingConnectionId !== null) {
                 event.preventDefault();
                 cancelEditing();
-            } else if (isAddingOdpMode) {
+            } else if (isAddingWaypointMode) {
                 event.preventDefault();
-                isAddingOdpMode = false;
+                isAddingWaypointMode = false;
                 mapElement.style.cursor = "";
             }
         }
@@ -761,13 +790,13 @@
 <div class="container mx-auto px-4 py-8">
     <h1 class="text-3xl font-bold mb-6">Nodes Map & Connections</h1>
 
-    {#if isAddingOdpMode}
+    {#if isAddingWaypointMode}
         <div class="toast toast-top toast-center z-50">
             <div class="alert alert-info">
-                <span>Click on the map to place the new ODP.</span>
+                <span>Click on the map to place the new Waypoint.</span>
                 <button
                     class="btn btn-sm btn-ghost"
-                    onclick={() => (isAddingOdpMode = false)}
+                    onclick={() => (isAddingWaypointMode = false)}
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -802,17 +831,17 @@
                             <span class="font-semibold"
                                 >Route Edit Mode Active</span
                             >
-                            {#if dirtyOdps.size > 0}
+                            {#if dirtyWaypoints.size > 0}
                                 <span class="badge badge-error badge-sm">
-                                    {dirtyOdps.size} unsaved changes
+                                    {dirtyWaypoints.size} unsaved changes
                                 </span>
                             {/if}
                         </div>
 
-                        {#if editingConnection?.odpPath && editingConnection.odpPath.length > 0}
+                        {#if editingConnection?.waypointPath && editingConnection.waypointPath.length > 0}
                             <span class="text-xs opacity-75">
-                                Yellow pins can be dragged to reposition ODPs in
-                                sequence
+                                Yellow pins can be dragged to reposition
+                                Waypoints in sequence
                             </span>
                         {/if}
                     </div>
@@ -874,7 +903,7 @@
                     >
                     <button
                         class="btn btn-secondary btn-sm"
-                        onclick={handleAddOdp}>Add ODP</button
+                        onclick={handleAddWaypoint}>Add Waypoint</button
                     >
                 </div>
             </div>
@@ -893,7 +922,7 @@
         </div>
     </div>
 
-    {#if editingConnectionId !== null && dirtyOdps.size > 0}
+    {#if editingConnectionId !== null && dirtyWaypoints.size > 0}
         <div class="fixed bottom-10 right-10 z-[1000] flex gap-2">
             <button
                 class="btn btn-error shadow-lg"
@@ -915,8 +944,8 @@
             </button>
             <button
                 class="btn btn-success shadow-lg"
-                onclick={saveAllOdpChanges}
-                title="Save all ODP position changes"
+                onclick={saveAllWaypointChanges}
+                title="Save all Waypoint position changes"
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -929,7 +958,7 @@
                         clip-rule="evenodd"
                     /></svg
                 >
-                Save Changes ({dirtyOdps.size})
+                Save Changes ({dirtyWaypoints.size})
             </button>
         </div>
     {/if}
@@ -940,7 +969,7 @@
     isEdit={isEditConnection}
     connection={selectedConnection}
     {nodes}
-    {odps}
+    {waypoints}
     onSave={handleSaveConnection}
     onClose={() => (showConnectionModal = false)}
     {token}
@@ -952,13 +981,13 @@
     onFind={handleFindPoint}
     onClose={() => (showFindPointModal = false)}
 />
-<OdpModal
-    isOpen={showOdpModal}
-    isEdit={isEditOdp}
-    odp={selectedOdp}
-    latlng={newOdpLatLng}
-    onSave={handleSaveOdp}
-    onClose={() => (showOdpModal = false)}
+<WaypointModal
+    isOpen={showWaypointModal}
+    isEdit={isEditWaypoint}
+    waypoint={selectedWaypoint}
+    latlng={newWaypointLatLng}
+    onSave={handleSaveWaypoint}
+    onClose={() => (showWaypointModal = false)}
     {token}
 />
 

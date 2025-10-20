@@ -1,17 +1,17 @@
 <script lang="ts">
-    import type { Connection, Node, Odp, Interface } from "@/types";
+    import type { Connection, Node, Waypoint, Interface } from "@/types";
 
     type Props = {
         isOpen: boolean;
         isEdit: boolean;
         connection: Connection | null;
         nodes: Node[];
-        odps: Odp[];
+        waypoints: Waypoint[];
         onSave: (connection: any) => void;
         onClose: () => void;
     };
 
-    const { isOpen, isEdit, connection, nodes, odps, onSave, onClose } =
+    const { isOpen, isEdit, connection, nodes, waypoints, onSave, onClose } =
         $props<Props>();
 
     let description = $state(connection?.description || "");
@@ -19,8 +19,8 @@
     let portAId = $state(connection?.portAId?.toString() || "");
     let deviceBId = $state(connection?.deviceBId?.toString() || "");
     let portBId = $state(connection?.portBId?.toString() || "");
-    let odpPathArray = $state([]);
-    let selectedOdpId = $state("");
+    let waypointPathArray = $state([]);
+    let selectedWaypointId = $state("");
 
     // Search states
     let deviceASearch = $state("");
@@ -142,19 +142,19 @@
         portBOpen = false;
     }
 
-    function addOdpToPath() {
-        if (selectedOdpId) {
-            const odpToAdd = odps.find((o) => o.id === parseInt(selectedOdpId));
-            if (odpToAdd) {
-                odpPathArray = [...odpPathArray, odpToAdd];
-                selectedOdpId = ""; // Reset dropdown
+    function addWaypointToPath() {
+        if (selectedWaypointId) {
+            const waypointToAdd = waypoints.find((o) => o.id === parseInt(selectedWaypointId));
+            if (waypointToAdd) {
+                waypointPathArray = [...waypointPathArray, waypointToAdd];
+                selectedWaypointId = ""; // Reset dropdown
             }
         }
     }
 
-    function removeOdpFromPath(index: number) {
-        odpPathArray.splice(index, 1);
-        odpPathArray = odpPathArray;
+    function removeWaypointFromPath(index: number) {
+        waypointPathArray.splice(index, 1);
+        waypointPathArray = waypointPathArray;
     }
 
     function handleSubmit(e) {
@@ -175,7 +175,7 @@
             deviceBId: parseInt(deviceBId),
             portBId: parseInt(portBId),
             description: description,
-            odpPath: odpPathArray.map((odp) => odp.id),
+            waypointPath: waypointPathArray.map((waypoint) => waypoint.id),
         };
 
         // 3. Check for NaN values after parsing
@@ -219,7 +219,7 @@
                 portAId = "";
                 deviceBId = "";
                 portBId = "";
-                odpPathArray = [];
+                waypointPathArray = [];
             }
             // Reset search states
             deviceASearch = "";
@@ -234,23 +234,23 @@
         }
     });
 
-    // Separate effect for odpPathArray to react to both connection and odps changes
+    // Separate effect for waypointPathArray to react to both connection and waypoints changes
     $effect(() => {
-        if (isOpen && connection && connection.odpPath && odps.length > 0) {
-            const mapped = connection.odpPath
+        if (isOpen && connection && connection.waypointPath && waypoints.length > 0) {
+            const mapped = connection.waypointPath
                 .map((item) => {
                     // If item is already an object with id, use it directly
                     if (typeof item === "object" && item.id) {
                         return item;
                     }
-                    // If item is an ID, find the corresponding ODP
-                    const found = odps.find((o) => o.id === item);
+                    // If item is an ID, find the corresponding Waypoint
+                    const found = waypoints.find((o) => o.id === item);
                     return found;
                 })
-                .filter((odp) => odp !== undefined);
-            odpPathArray = mapped;
+                .filter((waypoint) => waypoint !== undefined);
+            waypointPathArray = mapped;
         } else if (isOpen && !connection) {
-            odpPathArray = [];
+            waypointPathArray = [];
         }
     });
 
@@ -545,37 +545,37 @@
                 </div>
             </div>
             <div class="form-control mt-4">
-                <label class="label" for="odp-path-select">
-                    <span class="label-text">ODP Path</span>
+                <label class="label" for="waypoint-path-select">
+                    <span class="label-text">Waypoint Path</span>
                 </label>
                 <div class="flex items-center gap-2">
                     <select
-                        id="odp-path-select"
+                        id="waypoint-path-select"
                         class="select select-bordered w-full max-w-xs"
-                        bind:value={selectedOdpId}
+                        bind:value={selectedWaypointId}
                     >
-                        <option disabled selected value="">Select ODP</option>
-                        {#each odps as odp}
-                            <option value={odp.id}>{odp.name}</option>
+                        <option disabled selected value="">Select Waypoint</option>
+                        {#each waypoints as waypoint}
+                            <option value={waypoint.id}>{waypoint.name}</option>
                         {/each}
                     </select>
                     <button
                         type="button"
                         class="btn btn-secondary"
-                        onclick={addOdpToPath}>Add</button
+                        onclick={addWaypointToPath}>Add</button
                     >
                 </div>
                 <div
                     class="mt-2 flex min-h-[40px] flex-wrap gap-2 rounded-lg bg-base-200 p-2"
                 >
-                    {#each odpPathArray as odp, i}
+                    {#each waypointPathArray as waypoint, i}
                         <div class="badge badge-lg badge-outline gap-2">
-                            <span>{odp.name}</span>
+                            <span>{waypoint.name}</span>
                             <button
                                 type="button"
                                 class="btn btn-xs btn-ghost"
-                                onclick={() => removeOdpFromPath(i)}
-                                aria-label="Remove ODP from path"
+                                onclick={() => removeWaypointFromPath(i)}
+                                aria-label="Remove Waypoint from path"
                             >
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"

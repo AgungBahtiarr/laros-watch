@@ -58,21 +58,23 @@ export interface Connection {
   portAId: number;
   deviceBId: number;
   portBId: number;
-  odpPath: number[];
+  waypointPath: Waypoint[];
   description: string;
   createdAt: string;
   updatedAt: string;
   customRoute: CustomRoute | null;
 }
 
-export interface Odp {
+export interface Waypoint {
   id: number;
   name: string;
+  type: "odp" | "join";
   location: string | null;
   lat: string | null;
   lng: string | null;
   notes: string | null;
+  spare: number | null;
   createdAt: string;
   updatedAt: string;
-  connections: Connection[];
+  connections?: Connection[];
 }

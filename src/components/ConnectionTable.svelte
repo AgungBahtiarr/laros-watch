@@ -236,21 +236,21 @@
                         </div>
                         <div>
                             <span class="font-semibold text-base-content/70"
-                                >ODP Path:</span
+                                >Waypoint Path:</span
                             >
-                            {#if conn.odpPath && conn.odpPath.length > 0}
+                            {#if conn.waypointPath && conn.waypointPath.length > 0}
                                 <div class="text-xs font-mono mt-1">
-                                    {conn.odpPath
+                                    {conn.waypointPath
                                         .map(
-                                            (odp, index) =>
-                                                `${index + 1}. ODP-${odp.id}`,
+                                            (waypoint, index) =>
+                                                `${index + 1}. ${waypoint.name} (${waypoint.type})`,
                                         )
                                         .join(" → ")}
                                 </div>
                             {:else}
                                 <span
                                     class="text-base-content/50 italic text-xs"
-                                    >No ODP path</span
+                                    >No waypoint path</span
                                 >
                             {/if}
                         </div>
