@@ -55,9 +55,9 @@ export interface CustomRoute {
 export interface Connection {
   id: number;
   deviceAId: number;
-  portAId: number;
+  interfaceAId: number;
   deviceBId: number;
-  portBId: number;
+  interfaceBId: number;
   waypointPath: Waypoint[];
   description: string;
   createdAt: string;

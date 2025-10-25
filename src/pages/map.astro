@@ -61,8 +61,8 @@ const nodesWithLocation = nodes.filter((node) => node.lat && node.lng);
 // Group connections by device and port pair, and select the one with Waypoint path if available
 const connectionGroups = new Map<string, Connection[]>();
 connections.forEach((conn) => {
-    const pair1 = `${conn.deviceAId}:${conn.portAId}`;
-    const pair2 = `${conn.deviceBId}:${conn.portBId}`;
+    const pair1 = `${conn.deviceAId}:${conn.interfaceAId}`;
+    const pair2 = `${conn.deviceBId}:${conn.interfaceBId}`;
     const pairKey = [pair1, pair2].sort().join("-");
     if (!connectionGroups.has(pairKey)) {
         connectionGroups.set(pairKey, []);

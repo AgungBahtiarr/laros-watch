@@ -16,9 +16,9 @@
 
     let description = $state(connection?.description || "");
     let deviceAId = $state(connection?.deviceAId?.toString() || "");
-    let portAId = $state(connection?.portAId?.toString() || "");
+    let interfaceAId = $state(connection?.interfaceAId?.toString() || "");
     let deviceBId = $state(connection?.deviceBId?.toString() || "");
-    let portBId = $state(connection?.portBId?.toString() || "");
+    let interfaceBId = $state(connection?.interfaceBId?.toString() || "");
     let waypointPathArray = $state([]);
     let selectedWaypointId = $state("");
 
@@ -55,18 +55,18 @@
             : "Select Device",
     );
     const portAName = $derived(
-        portAId
-            ? portsA.find((p) => p.id.toString() === portAId)?.ifName +
+        interfaceAId
+            ? portsA.find((p) => p.id.toString() === interfaceAId)?.ifName +
                   " (" +
-                  portsA.find((p) => p.id.toString() === portAId)?.ifDescr +
+                  portsA.find((p) => p.id.toString() === interfaceAId)?.ifDescr +
                   ")" || "Select Port"
             : "Select Port",
     );
     const portBName = $derived(
-        portBId
-            ? portsB.find((p) => p.id.toString() === portBId)?.ifName +
+        interfaceBId
+            ? portsB.find((p) => p.id.toString() === interfaceBId)?.ifName +
                   " (" +
-                  portsB.find((p) => p.id.toString() === portBId)?.ifDescr +
+                  portsB.find((p) => p.id.toString() === interfaceBId)?.ifDescr +
                   ")" || "Select Port"
             : "Select Port",
     );
@@ -118,26 +118,26 @@
 
     function selectDeviceA(node: Node) {
         deviceAId = node.id.toString();
-        portAId = "";
+        interfaceAId = "";
         deviceASearch = "";
         deviceAOpen = false;
     }
 
     function selectDeviceB(node: Node) {
         deviceBId = node.id.toString();
-        portBId = "";
+        interfaceBId = "";
         deviceBSearch = "";
         deviceBOpen = false;
     }
 
     function selectPortA(iface: Interface) {
-        portAId = iface.id.toString();
+        interfaceAId = iface.id.toString();
         portASearch = "";
         portAOpen = false;
     }
 
     function selectPortB(iface: Interface) {
-        portBId = iface.id.toString();
+        interfaceBId = iface.id.toString();
         portBSearch = "";
         portBOpen = false;
     }
@@ -160,9 +160,9 @@
     function handleSubmit(e) {
         e.preventDefault();
         // 1. Basic validation
-        if (!deviceAId || !portAId || !deviceBId || !portBId || !description) {
+        if (!deviceAId || !interfaceAId || !deviceBId || !interfaceBId || !description) {
             alert(
-                "Please fill out all required fields: Description, Devices, and Ports.",
+                "Please fill out all required fields: Description, Devices, and Interfaces.",
             );
             return;
         }
@@ -171,9 +171,9 @@
         const data = {
             id: connection?.id,
             deviceAId: parseInt(deviceAId),
-            portAId: parseInt(portAId),
+            interfaceAId: parseInt(interfaceAId),
             deviceBId: parseInt(deviceBId),
-            portBId: parseInt(portBId),
+            interfaceBId: parseInt(interfaceBId),
             description: description,
             waypointPath: waypointPathArray.map((waypoint) => waypoint.id),
         };
@@ -181,11 +181,11 @@
         // 3. Check for NaN values after parsing
         if (
             isNaN(data.deviceAId) ||
-            isNaN(data.portAId) ||
+            isNaN(data.interfaceAId) ||
             isNaN(data.deviceBId) ||
-            isNaN(data.portBId)
+            isNaN(data.interfaceBId)
         ) {
-            alert("Invalid device or port selection.");
+            alert("Invalid device or interface selection.");
             console.error("handleSubmit parsed NaN values:", data);
             return;
         }
@@ -210,15 +210,15 @@
             if (connection) {
                 description = connection.description || "";
                 deviceAId = connection.deviceAId?.toString() || "";
-                portAId = connection.portAId?.toString() || "";
+                interfaceAId = connection.interfaceAId?.toString() || "";
                 deviceBId = connection.deviceBId?.toString() || "";
-                portBId = connection.portBId?.toString() || "";
+                interfaceBId = connection.interfaceBId?.toString() || "";
             } else {
                 description = "";
                 deviceAId = "";
-                portAId = "";
+                interfaceAId = "";
                 deviceBId = "";
-                portBId = "";
+                interfaceBId = "";
                 waypointPathArray = [];
             }
             // Reset search states
@@ -358,17 +358,17 @@
                 <div class="form-control">
                     <label class="label">Port A</label>
                     <div class="searchable-select relative">
-                        <div
-                            class="select select-bordered w-full cursor-pointer flex items-center justify-between"
-                            class:select-disabled={!portsA.length}
-                            onclick={() => {
-                                if (portsA.length) {
-                                    portAOpen = !portAOpen;
-                                    if (portAOpen) portASearch = "";
-                                }
-                            }}
+                         <div
+                             class="select select-bordered w-full cursor-pointer flex items-center justify-between"
+                             class:select-disabled={!deviceAId}
+                             onclick={() => {
+                                 if (deviceAId) {
+                                     portAOpen = !portAOpen;
+                                     if (portAOpen) portASearch = "";
+                                 }
+                             }}
                         >
-                            <span class:text-gray-400={!portAId}
+                            <span class:text-gray-400={!interfaceAId}
                                 >{portAName}</span
                             >
                             <svg
@@ -385,7 +385,7 @@
                                 ></path>
                             </svg>
                         </div>
-                        {#if portAOpen && portsA.length}
+                         {#if portAOpen}
                             <div
                                 class="absolute top-full left-0 right-0 z-50 bg-base-100 border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
                             >
@@ -484,17 +484,17 @@
                 <div class="form-control">
                     <label class="label">Port B</label>
                     <div class="searchable-select relative">
-                        <div
-                            class="select select-bordered w-full cursor-pointer flex items-center justify-between"
-                            class:select-disabled={!portsB.length}
-                            onclick={() => {
-                                if (portsB.length) {
-                                    portBOpen = !portBOpen;
-                                    if (portBOpen) portBSearch = "";
-                                }
-                            }}
+                         <div
+                             class="select select-bordered w-full cursor-pointer flex items-center justify-between"
+                             class:select-disabled={!deviceBId}
+                             onclick={() => {
+                                 if (deviceBId) {
+                                     portBOpen = !portBOpen;
+                                     if (portBOpen) portBSearch = "";
+                                 }
+                             }}
                         >
-                            <span class:text-gray-400={!portBId}
+                            <span class:text-gray-400={!interfaceBId}
                                 >{portBName}</span
                             >
                             <svg
@@ -511,7 +511,7 @@
                                 ></path>
                             </svg>
                         </div>
-                        {#if portBOpen && portsB.length}
+                         {#if portBOpen}
                             <div
                                 class="absolute top-full left-0 right-0 z-50 bg-base-100 border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-hidden"
                             >
