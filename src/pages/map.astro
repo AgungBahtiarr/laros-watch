@@ -10,27 +10,51 @@ const graphhopperApiUrl = import.meta.env.PUBLIC_GRAPHHOPPER_URL;
 // Fetch nodes and connections
 const token = Astro.cookies.get("authToken");
 
-const [nodesResponse, connectionsResponse, waypointsResponse] = await Promise.all([
+const [
+    nodesResponse,
+    connectionsResponse,
+    waypointsResponse,
+    vlanTraceResponse,
+] = await Promise.allSettled([
     fetch(`${apiBaseUrl}/api/nodes`, {
-        headers: {
-            Authorization: `Basic ${token?.value}`,
-        },
+        headers: { Authorization: `Basic ${token?.value}` },
     }),
     fetch(`${apiBaseUrl}/api/nodes/connections`, {
-        headers: {
-            Authorization: `Basic ${token?.value}`,
-        },
+        headers: { Authorization: `Basic ${token?.value}` },
     }),
     fetch(`${apiBaseUrl}/api/nodes/waypoints`, {
-        headers: {
-            Authorization: `Basic ${token?.value}`,
-        },
+        headers: { Authorization: `Basic ${token?.value}` },
+    }),
+    fetch(`${apiBaseUrl}/api/vlan-trace`, {
+        headers: { Authorization: `Basic ${token?.value}` },
     }),
 ]);
 
-const nodes: Node[] = await nodesResponse.json();
-const connections: Connection[] = await connectionsResponse.json();
-const waypoints: Waypoint[] = await waypointsResponse.json();
+const nodes: Node[] =
+    nodesResponse.status === "fulfilled" && nodesResponse.value.ok
+        ? await nodesResponse.value.json()
+        : [];
+const connections: Connection[] =
+    connectionsResponse.status === "fulfilled" && connectionsResponse.value.ok
+        ? await connectionsResponse.value.json()
+        : [];
+const waypoints: Waypoint[] =
+    waypointsResponse.status === "fulfilled" && waypointsResponse.value.ok
+        ? await waypointsResponse.value.json()
+        : [];
+
+let vlanTraceData = {};
+if (vlanTraceResponse.status === "fulfilled" && vlanTraceResponse.value.ok) {
+    vlanTraceData = await vlanTraceResponse.value.json();
+} else {
+    console.error(
+        "Failed to fetch VLAN trace data:",
+        vlanTraceResponse.status === "rejected"
+            ? vlanTraceResponse.reason
+            : await (vlanTraceResponse.value as any).text(),
+    );
+}
+// console.log("--- VLAN TRACE DATA ---", vlanTraceData);
 
 const nodesWithLocation = nodes.filter((node) => node.lat && node.lng);
 
@@ -49,7 +73,10 @@ connections.forEach((conn) => {
 const uniqueConnections: Connection[] = [];
 for (const group of connectionGroups.values()) {
     const withWaypoint = group.find(
-        (c) => c.waypointPath && Array.isArray(c.waypointPath) && c.waypointPath.length > 0,
+        (c) =>
+            c.waypointPath &&
+            Array.isArray(c.waypointPath) &&
+            c.waypointPath.length > 0,
     );
     if (withWaypoint) {
         uniqueConnections.push(withWaypoint);
@@ -69,6 +96,7 @@ for (const group of connectionGroups.values()) {
         osrmApiUrl={osrmApiUrl}
         graphhopperApiUrl={graphhopperApiUrl}
         waypoints={waypoints}
+        vlanTraceData={vlanTraceData}
         token={token?.value}
     />
 </Layout>

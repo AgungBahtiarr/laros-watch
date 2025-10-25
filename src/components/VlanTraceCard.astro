@@ -1,0 +1,27 @@
+---
+interface Props {
+    vlanKey: string; // e.g., "vlan_100"
+    paths: { path: string[] }[];
+}
+
+const { vlanKey, paths } = Astro.props;
+const vlanId = vlanKey.split('_')[1];
+---
+<div class="card bg-base-100 shadow-lg border border-base-300/50 flex flex-col h-full">
+    <div class="card-body flex-grow">
+        <h2 class="card-title text-lg font-bold">
+            VLAN {vlanId}
+        </h2>
+        <div class="mt-4 space-y-2 overflow-y-auto max-h-60 pr-2">
+            {paths && paths.length > 0 ? (
+                paths.map(({ path }) => (
+                    <div class="text-xs text-base-content/80 bg-base-200 p-2 rounded-md font-mono break-words">
+                        {path.join(' → ')}
+                    </div>
+                ))
+            ) : (
+                <p class="text-sm text-base-content/60">No paths found.</p>
+            )}
+        </div>
+    </div>
+</div>

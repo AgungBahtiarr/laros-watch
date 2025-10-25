@@ -16,6 +16,7 @@
     } from "@/assets/map-icon";
 
     import ConnectionTable from "./ConnectionTable.svelte";
+    import VlanRouteViewer from "./VlanRouteViewer.svelte";
     import ConnectionModal from "./ConnectionModal.svelte";
     import FindPointModal from "./FindPointModal.svelte";
     import WaypointModal from "./WaypointModal.svelte";
@@ -24,6 +25,7 @@
         nodes: Node[];
         connections: Connection[];
         waypoints: Waypoint[];
+        vlanTraceData: { [key: string]: { path: string[] }[] };
         nodesWithLocation: Node[];
         apiBaseUrl: string;
         osrmApiUrl: string;
@@ -40,6 +42,7 @@
         osrmApiUrl,
         graphhopperApiUrl,
         token,
+        vlanTraceData,
     } = $props<Props>();
 
     let map: L.Map;
@@ -79,6 +82,50 @@
     let selectedConnection = $state<Connection | null>(null);
     let selectedWaypoint = $state<Waypoint | null>(null);
     let newWaypointLatLng = $state<{ lat: number; lng: number } | null>(null);
+
+    // Tab State
+    let activeTab = $state("connections");
+    let highlightedVlanLayers: L.GeoJSON[] = [];
+
+    function handleHighlightVlan(event: CustomEvent) {
+        // Clear previous highlights
+        highlightedVlanLayers.forEach((layer) => {
+            const originalStyle = originalStyles.get(layer);
+            if (originalStyle) {
+                layer.setStyle(originalStyle);
+            }
+        });
+
+        let newHighlights: L.GeoJSON[] = [];
+
+        const { connectionsToHighlight } = event.detail;
+        if (connectionsToHighlight.length > 0) {
+            const connectionLayersToHighlight: L.GeoJSON[] = [];
+
+            connections.forEach((conn) => {
+                const nodeA = nodeMap.get(conn.deviceAId);
+                const nodeB = nodeMap.get(conn.deviceBId);
+                if (!nodeA || !nodeB) return;
+
+                const pairKey = [nodeA.name, nodeB.name].sort().join("--");
+
+                if (connectionsToHighlight.includes(pairKey)) {
+                    const routeLayer = routeLayers[conn.id];
+                    if (routeLayer) {
+                        connectionLayersToHighlight.push(routeLayer);
+                    }
+                }
+            });
+
+            connectionLayersToHighlight.forEach((layer) => {
+                layer.setStyle({ color: "#FF00FF", weight: 8, opacity: 1 }); // Magenta highlight
+                layer.bringToFront();
+            });
+            newHighlights = connectionLayersToHighlight;
+        }
+
+        highlightedVlanLayers = newHighlights;
+    }
 
     function stringToColor(str: string) {
         let hash = 0;
@@ -910,31 +957,62 @@
         <div
             class="lg:w-2/5 xl:w-1/3 flex flex-col h-[700px] border-black border-1 p-3 rounded-md"
         >
-            <div class="flex-col md:flex-row justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">Connections</h2>
-                <div class="flex gap-2">
-                    <button
-                        class="btn btn-primary btn-sm"
-                        onclick={handleAddConnection}>Add Connection</button
-                    >
-                    <button
-                        class="btn btn-secondary btn-sm"
-                        onclick={handleAddWaypoint}>Add Waypoint</button
-                    >
+            <div role="tablist" class="tabs tabs-lifted">
+                <a
+                    role="tab"
+                    class="tab"
+                    class:tab-active={activeTab === "connections"}
+                    onclick={() => (activeTab = "connections")}>Connections</a
+                >
+                <a
+                    role="tab"
+                    class="tab"
+                    class:tab-active={activeTab === "vlan-routes"}
+                    onclick={() => (activeTab = "vlan-routes")}>VLAN Routes</a
+                >
+            </div>
+
+            {#if activeTab === "connections"}
+                <div
+                    class="flex-col md:flex-row justify-between items-center mb-4 mt-4"
+                >
+                    <h2 class="text-2xl font-bold">Connections</h2>
+                    <div class="flex gap-2 mt-2">
+                        <button
+                            class="btn btn-primary btn-sm"
+                            onclick={handleAddConnection}>Add Connection</button
+                        >
+                        <button
+                            class="btn btn-secondary btn-sm"
+                            onclick={handleAddWaypoint}>Add Waypoint</button
+                        >
+                    </div>
                 </div>
-            </div>
-            <div class="flex-grow overflow-y-auto hide-scrollbar border-black">
-                <ConnectionTable
-                    {connections}
-                    {nodes}
-                    onView={viewConnection}
-                    onEdit={handleEditConnection}
-                    onDelete={deleteConnection}
-                    onFindPoint={handleFindPointModal}
-                    onEditRoute={handleEditRoute}
-                    {editingConnectionId}
-                />
-            </div>
+                <div
+                    class="flex-grow overflow-y-auto hide-scrollbar border-black"
+                >
+                    <ConnectionTable
+                        {connections}
+                        {nodes}
+                        onView={viewConnection}
+                        onEdit={handleEditConnection}
+                        onDelete={deleteConnection}
+                        onFindPoint={handleFindPointModal}
+                        onEditRoute={handleEditRoute}
+                        {editingConnectionId}
+                    />
+                </div>
+            {:else if activeTab === "vlan-routes"}
+                <div
+                    class="flex-grow overflow-y-auto hide-scrollbar border-black mt-4"
+                >
+                    <VlanRouteViewer
+                        {vlanTraceData}
+                        {nodes}
+                        on:highlightVlan={handleHighlightVlan}
+                    />
+                </div>
+            {/if}
         </div>
     </div>
 
