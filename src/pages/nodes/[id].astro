@@ -40,9 +40,15 @@ interface Node {
 
 const { id } = Astro.params;
 let node: Node | null = null;
+
+const token = Astro.cookies.get("authToken");
+
 try {
     const response = await fetch(
         `${import.meta.env.PUBLIC_API_BASE_URL}/api/nodes`,
+        {
+            headers: { Authorization: `Basic ${token?.value}` },
+        },
     );
     if (response.ok) {
         const nodes: Node[] = await response.json();
@@ -203,7 +209,7 @@ try {
             ) : (
                 <div class="text-center py-16">
                     <h1 class="text-2xl font-bold">Node not found</h1>
-                    <a href="/nodes" class="btn btn-primary mt-4">
+                    <a href="/" class="btn btn-primary mt-4">
                         Back to Nodes List
                     </a>
                 </div>
