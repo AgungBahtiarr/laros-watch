@@ -1,0 +1,28 @@
+---
+import { Home, Network, Globe, Map, Bot } from '@lucide/astro';
+---
+
+<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 z-50">
+    <div class="flex justify-around py-2">
+        <a href="/" class="flex flex-col items-center text-xs hover:text-primary">
+            <Home size={20} />
+            Nodes
+        </a>
+        <a href="/vlans" class="flex flex-col items-center text-xs hover:text-primary">
+            <Network size={20} />
+            VLANs
+        </a>
+        <a href="/domains" class="flex flex-col items-center text-xs hover:text-primary">
+            <Globe size={20} />
+            Domains
+        </a>
+        <a href="/map" class="flex flex-col items-center text-xs hover:text-primary">
+            <Map size={20} />
+            Maps
+        </a>
+        <a href="/bot" class="flex flex-col items-center text-xs hover:text-primary">
+            <Bot size={20} />
+            Bot
+        </a>
+    </div>
+</nav>
