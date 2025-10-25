@@ -82,27 +82,6 @@ const finalNodeGroups: NodeGroup[] = Array.from(nodeGroupsMap.values()).map(
         };
     },
 );
-
-// Fetch VLAN Trace Data
-let vlanTraceData: { [key: string]: { path: string[] }[] } = {};
-try {
-    const response = await fetch(`${apiUrl}/api/vlan-trace`, {
-        headers: { Authorization: `Basic ${token?.value}` },
-    });
-    if (response.ok) {
-        vlanTraceData = await response.json();
-    } else {
-        console.error(
-            "Failed to fetch VLAN traces:",
-            response.status,
-            await response.text(),
-        );
-    }
-} catch (error) {
-    console.error("Failed to fetch VLAN traces:", error);
-}
-
-const vlanTraces = Object.entries(vlanTraceData);
 ---
 
 <Layout title="VLAN Nodes">
